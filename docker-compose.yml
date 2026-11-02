@@ -1,0 +1,63 @@
+# Ambiente de desenvolvimento: docker compose up
+# O código é montado como volume, então alterações aparecem sem rebuild.
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: arcana
+      POSTGRES_USER: arcana
+      POSTGRES_PASSWORD: arcana
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arcana -d arcana"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        REQUIREMENTS: dev
+    command: python manage.py runserver 0.0.0.0:8000
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://arcana:arcana@db:5432/arcana
+      REDIS_URL: redis://redis:6379/0
+      RUN_MIGRATIONS: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        REQUIREMENTS: dev
+    command: celery -A config worker -l info
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://arcana:arcana@db:5432/arcana
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - .:/app
+    depends_on:
+      - web
+
+volumes:
+  pgdata:

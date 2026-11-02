@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: arcana
+          POSTGRES_USER: arcana
+          POSTGRES_PASSWORD: arcana
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U arcana"
+          --health-interval 5s
+          --health-retries 10
+
+    env:
+      SECRET_KEY: ci-somente-para-testes
+      DEBUG: "1"
+      DATABASE_URL: postgres://arcana:arcana@localhost:5432/arcana
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements/*.txt
+
+      - name: Instalar dependências
+        run: pip install -r requirements/dev.txt
+
+      - name: Lint e formatação
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Migrações pendentes
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Testes
+        run: python -m pytest
+
+      - name: Vulnerabilidades nas dependências
+        run: pip-audit -r requirements/base.txt

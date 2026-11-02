@@ -1,0 +1,47 @@
+{% load static django_htmx %}<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block head_title %}Arcana Crochet{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Peças de crochê feitas à mão pela Arcana Crochet.{% endblock %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <a class="pular" href="#conteudo">Pular para o conteúdo</a>
+  <header class="topo">
+    <div class="topo__interno">
+      <a class="marca" href="{% url 'catalogo:vitrine' %}">Arcana Crochet</a>
+      <nav aria-label="Principal">
+        <a href="{% url 'catalogo:vitrine' %}">Loja</a>
+        <a href="{% url 'core:sobre' %}">Sobre</a>
+        {% if user.is_authenticated %}
+          {% if user.is_staff %}<a href="{% url 'admin:index' %}">Painel</a>{% endif %}
+          <form method="post" action="{% url 'account_logout' %}" class="inline">
+            {% csrf_token %}<button type="submit" class="link">Sair</button>
+          </form>
+        {% else %}
+          <a href="{% url 'account_login' %}">Entrar</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  {% if messages %}
+    <div class="mensagens" role="status">
+      {% for message in messages %}<p class="mensagem mensagem--{{ message.tags }}">{{ message }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <main id="conteudo" class="conteudo">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="rodape">
+    <p>Arcana Crochet · peças feitas à mão</p>
+    <p><a href="{% url 'core:trocas' %}">Trocas e devoluções</a></p>
+  </footer>
+  {% htmx_script %}
+</body>
+</html>

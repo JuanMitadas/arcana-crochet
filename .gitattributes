@@ -1,0 +1,3 @@
+# Scripts de shell sempre com fim de linha LF (evita erro ao rodar no Linux vindo do Windows).
+*.sh text eol=lf
+Caddyfile text eol=lf

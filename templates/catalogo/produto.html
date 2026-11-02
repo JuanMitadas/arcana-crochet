@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load dinheiro %}
+
+{% block head_title %}{{ produto.nome }} · Arcana Crochet{% endblock %}
+{% block meta_description %}{{ produto.descricao|truncatechars:155 }}{% endblock %}
+
+{% block content %}
+  <article class="produto">
+    <div class="produto__fotos">
+      {% for foto in produto.fotos.all %}
+        <img src="{{ foto.imagem.url }}" alt="{{ foto.texto_alternativo }}"
+             width="{{ foto.largura }}" height="{{ foto.altura }}"{% if not forloop.first %} loading="lazy"{% endif %}>
+      {% empty %}
+        <div class="sem-foto" aria-hidden="true"></div>
+      {% endfor %}
+    </div>
+
+    <div class="produto__info">
+      <p class="migalha"><a href="{% url 'catalogo:vitrine' %}?categoria={{ produto.categoria.slug }}">{{ produto.categoria.nome }}</a></p>
+      <h1>{{ produto.nome }}</h1>
+      <p class="preco preco--grande">
+        {% if produto.em_promocao %}<s>{{ produto.preco_centavos|brl }}</s>{% endif %}
+        {{ produto.preco_atual_centavos|brl }}
+      </p>
+
+      {% if produto.disponibilidade == "sob_encomenda" %}
+        <p class="selo">Feito sob encomenda · fica pronto em até {{ produto.prazo_producao_dias }} dias</p>
+      {% elif produto.status == "esgotado" %}
+        <p class="selo">Esgotado</p>
+      {% endif %}
+
+      {% if produto.variacoes.all %}
+        <h2 class="subtitulo">Opções</h2>
+        <ul class="variacoes">
+          {% for variacao in produto.variacoes.all %}
+            <li>
+              {{ variacao.cor|default:"Padrão" }}{% if variacao.tamanho %} · {{ variacao.tamanho }}{% endif %}
+              — {{ variacao.preco_centavos|brl }}
+              {% if variacao.disponivel <= 0 and produto.disponibilidade == "pronta_entrega" %}<em>(esgotada)</em>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if produto.descricao %}
+        <div class="descricao">{{ produto.descricao|linebreaks }}</div>
+      {% endif %}
+      {% if produto.material %}<p><strong>Material:</strong> {{ produto.material }}</p>{% endif %}
+
+      <p class="aviso">Carrinho e checkout chegam na fase de transação.</p>
+    </div>
+  </article>
+{% endblock %}
