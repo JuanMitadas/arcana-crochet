@@ -1,0 +1,295 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Arcana Crochet: loja em Django na AWS Lambda, atrás do CloudFront. Fotos no S3,
+  banco no Neon (fora da AWS), segredos no SSM Parameter Store.
+
+  visitante → CloudFront ─┬─ /media/*  → S3 (fotos)
+                          ├─ /static/* → Lambda (com cache longo)
+                          └─ resto     → Lambda (sem cache) → Neon
+
+Parameters:
+  Ambiente:
+    Type: String
+    Default: prod
+    AllowedPattern: "[a-z]+"
+    Description: Usado nos nomes e no caminho dos segredos (/arcana/<ambiente>/).
+  Dominio:
+    Type: String
+    Default: ""
+    Description: >-
+      Domínio próprio, ex.: arcanacrochet.com.br (o www é incluído). Vazio: o site
+      fica só no endereço *.cloudfront.net.
+  CertificadoArn:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|^arn:aws:acm:us-east-1:[0-9]{12}:certificate/.+$"
+    ConstraintDescription: Use um certificado do ACM criado na região us-east-1.
+    Description: >-
+      Certificado do ACM na região us-east-1 cobrindo o domínio e o www.
+      Obrigatório quando Dominio está preenchido.
+
+Conditions:
+  TemDominio: !Not [!Equals [!Ref Dominio, ""]]
+
+Rules:
+  DominioExigeCertificado:
+    RuleCondition: !Not [!Equals [!Ref Dominio, ""]]
+    Assertions:
+      - Assert: !Not [!Equals [!Ref CertificadoArn, ""]]
+        AssertDescription: Com domínio próprio, informe CertificadoArn (ACM em us-east-1).
+
+Resources:
+  # --- Fotos e backups ------------------------------------------------------
+
+  Midia:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      # Versões antigas guardadas por 30 dias: protege contra foto apagada sem querer.
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: apagar-versoes-antigas
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+  MidiaPolitica:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Midia
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: LeituraPeloCloudFront
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub ${Midia.Arn}/media/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribuicao}
+
+  Backups:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      LifecycleConfiguration:
+        Rules:
+          - Id: manter-30-dias
+            Status: Enabled
+            ExpirationInDays: 30
+
+  # --- Aplicação ------------------------------------------------------------
+
+  SiteLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/arcana-${Ambiente}-site
+      RetentionInDays: 14
+
+  Site:
+    Type: AWS::Serverless::Function
+    Metadata:
+      DockerContext: ..
+      Dockerfile: docker/Dockerfile
+      DockerTag: latest
+    Properties:
+      FunctionName: !Sub arcana-${Ambiente}-site
+      Description: Loja Arcana Crochet (Django + Lambda Web Adapter)
+      PackageType: Image
+      Architectures: [x86_64]
+      # Mais memória também dá mais CPU, o que encurta o cold start do Django.
+      MemorySize: 1024
+      Timeout: 30
+      LoggingConfig:
+        LogGroup: !Ref SiteLogs
+        LogFormat: Text
+      Environment:
+        Variables:
+          AWS_SSM_PREFIX: !Sub /arcana/${Ambiente}/
+          DEBUG: "0"
+          # O CloudFront só repassa pedidos dos domínios dele; e a checagem do
+          # cabeçalho X-Arcana-Origem garante que todo pedido passou por ele.
+          ALLOWED_HOSTS: "*"
+          USE_X_FORWARDED_HOST: "1"
+          TRUSTED_CLIENT_IP_HEADER: X-Arcana-Ip
+          MIDIA_BUCKET: !Ref Midia
+          CACHE_URL: dbcache://cache_django
+          DATABASE_POOLER: "1"
+      FunctionUrlConfig:
+        AuthType: NONE
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref Midia
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParametersByPath
+                - ssm:GetParameters
+                - ssm:GetParameter
+              Resource:
+                - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/arcana/${Ambiente}
+                - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/arcana/${Ambiente}/*
+      Events:
+        # Mantém uma instância aquecida: o Lambda Web Adapter repassa este evento
+        # para /healthz/ (AWS_LWA_PASS_THROUGH_PATH), que responde sem tocar no banco.
+        Aquecimento:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(5 minutes)
+            Input: '{"aquecimento": true}'
+            RetryPolicy:
+              MaximumRetryAttempts: 0
+
+  # --- CloudFront -----------------------------------------------------------
+
+  AcessoMidia:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub arcana-${Ambiente}-midia
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # Roda na borda antes de cada pedido ao Django (grátis até 2 milhões/mês):
+  # redireciona www para o domínio principal, informa o domínio digitado e grava o
+  # IP do visitante (sobrescrevendo o que o visitante tenha mandado nesses cabeçalhos).
+  FuncaoBorda:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub arcana-${Ambiente}-borda
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Redireciona www e repassa host e IP do visitante
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var req = event.request;
+          var host = req.headers.host ? req.headers.host.value : "";
+          if (host.indexOf("www.") === 0) {
+            var qs = [];
+            for (var k in req.querystring) {
+              var v = req.querystring[k];
+              qs.push(encodeURIComponent(k) + (v.value ? "=" + encodeURIComponent(v.value) : ""));
+            }
+            return {
+              statusCode: 301,
+              statusDescription: "Moved Permanently",
+              headers: { location: { value: "https://" + host.substring(4) + req.uri + (qs.length ? "?" + qs.join("&") : "") } }
+            };
+          }
+          req.headers["x-forwarded-host"] = { value: host };
+          req.headers["x-arcana-ip"] = { value: event.viewer.ip };
+          return req;
+        }
+
+  Distribuicao:
+    Type: AWS::CloudFront::Distribution
+    Metadata:
+      cfn-lint:
+        config:
+          # O certificado só é usado quando há domínio (regra DominioExigeCertificado);
+          # o cfn-lint avalia o valor padrão vazio mesmo no ramo desligado do !If.
+          ignore_checks: [W1030]
+    Properties:
+      DistributionConfig:
+        Comment: !Sub Arcana Crochet (${Ambiente})
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        # PriceClass_All inclui as bordas da América do Sul (as outras classes não).
+        PriceClass: PriceClass_All
+        Aliases: !If [TemDominio, [!Ref Dominio, !Sub "www.${Dominio}"], !Ref AWS::NoValue]
+        ViewerCertificate: !If
+          - TemDominio
+          - AcmCertificateArn: !Ref CertificadoArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+        Origins:
+          - Id: lambda
+            # https://<id>.lambda-url.<região>.on.aws/ → <id>.lambda-url.<região>.on.aws
+            DomainName: !Select [2, !Split ["/", !GetAtt SiteUrl.FunctionUrl]]
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: [TLSv1.2]
+              OriginReadTimeout: 30
+            OriginCustomHeaders:
+              - HeaderName: X-Arcana-Origem
+                HeaderValue: !Sub "{{resolve:ssm:/arcana/${Ambiente}/ORIGEM_SEGREDO}}"
+          - Id: midia
+            DomainName: !GetAtt Midia.RegionalDomainName
+            OriginAccessControlId: !GetAtt AcessoMidia.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: lambda
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          # Gerenciadas pela AWS: CachingDisabled e AllViewerExceptHostHeader
+          # (cookies, query string e cabeçalhos do visitante vão para o Django).
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt FuncaoBorda.FunctionMetadata.FunctionARN
+        CacheBehaviors:
+          # Arquivos com hash no nome (collectstatic + WhiteNoise): cache longo.
+          - PathPattern: /static/*
+            TargetOriginId: lambda
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized
+          - PathPattern: /media/*
+            TargetOriginId: midia
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized
+
+Outputs:
+  EnderecoSite:
+    Description: Endereço da loja no CloudFront.
+    Value: !Sub https://${Distribuicao.DomainName}
+  DominioCloudFront:
+    Description: Aponte o domínio próprio (registro ALIAS/CNAME) para este endereço.
+    Value: !GetAtt Distribuicao.DomainName
+  DistribuicaoId:
+    Value: !Ref Distribuicao
+  FuncaoSite:
+    Value: !Ref Site
+  BucketMidia:
+    Value: !Ref Midia
+  BucketBackups:
+    Description: Destino do backup diário do banco (.github/workflows/backup.yml).
+    Value: !Ref Backups

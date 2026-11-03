@@ -2,8 +2,8 @@
   "name": "arcana-crochet",
   "private": true,
   "scripts": {
-    "build:css": "tailwindcss -i static/src/app.css -o static/css/app.css --minify",
-    "watch:css": "tailwindcss -i static/src/app.css -o static/css/app.css --watch",
+    "build:css": "tailwindcss -i frontend/app.css -o static/css/app.css --minify",
+    "watch:css": "tailwindcss -i frontend/app.css -o static/css/app.css --watch",
     "fontes": "node scripts/copiar-fontes.mjs"
   },
   "devDependencies": {

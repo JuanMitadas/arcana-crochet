@@ -28,9 +28,9 @@ jobs:
       DATABASE_URL: postgres://arcana:arcana@localhost:5432/arcana
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
           cache: pip
@@ -43,6 +43,23 @@ jobs:
         run: |
           ruff check .
           ruff format --check .
+
+      - name: Scripts de shell
+        run: shellcheck infra/*.sh docker/entrypoint.sh
+
+      - name: Templates da AWS (SAM/CloudFormation)
+        run: cfn-lint infra/*.yaml
+
+      - name: Checagem de produção
+        env:
+          DEBUG: "0"
+          SECRET_KEY: ci-uma-chave-longa-so-para-a-checagem-de-producao-0123456789
+          ALLOWED_HOSTS: "*"
+          EMAIL_URL: smtp+tls://usuario:senha@smtp.exemplo.com:587
+          ORIGEM_SEGREDO: ci-segredo
+        run: |
+          python manage.py collectstatic --noinput -v 0
+          python manage.py check --deploy --fail-level WARNING
 
       - name: Migrações pendentes
         run: python manage.py makemigrations --check --dry-run

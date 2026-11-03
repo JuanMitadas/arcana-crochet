@@ -8,9 +8,9 @@
   - A onda do "crochet" do logo como divisor (#i-onda)
 */
 @import "tailwindcss";
-@source "../../templates";
-@source "../../apps";
-@source "../js";
+@source "../templates";
+@source "../apps";
+@source "../static/js";
 
 /* --- Fontes auto-hospedadas (a CSP só permite font-src 'self') ---------- */
 @font-face {

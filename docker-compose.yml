@@ -16,11 +16,6 @@ services:
       interval: 5s
       retries: 10
 
-  redis:
-    image: redis:8-alpine
-    ports:
-      - "6379:6379"
-
   web:
     build:
       context: .
@@ -31,7 +26,6 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgres://arcana:arcana@db:5432/arcana
-      REDIS_URL: redis://redis:6379/0
       RUN_MIGRATIONS: "1"
     ports:
       - "8000:8000"
@@ -40,24 +34,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_started
-
-  worker:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-      args:
-        REQUIREMENTS: dev
-    command: celery -A config worker -l info
-    env_file: .env
-    environment:
-      DATABASE_URL: postgres://arcana:arcana@db:5432/arcana
-      REDIS_URL: redis://redis:6379/0
-    volumes:
-      - .:/app
-    depends_on:
-      - web
 
 volumes:
   pgdata:

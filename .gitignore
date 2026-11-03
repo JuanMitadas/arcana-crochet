@@ -29,3 +29,6 @@ Thumbs.db
 
 # Frontend (o CSS compilado em static/css é versionado)
 node_modules/
+
+# AWS SAM
+.aws-sam/

@@ -101,7 +101,7 @@ npm run build:css      # gera static/css/app.css minificado (versionado no git)
 python manage.py popular_demo   # peças, pedidos e avaliações de exemplo
 ```
 
-- O CSS compilado é versionado para o Docker não precisar de Node. **Rode `npm run build:css` antes de commitar** mudanças em templates ou em `static/src/app.css`.
+- O CSS compilado é versionado para o Docker não precisar de Node. **Rode `npm run build:css` antes de commitar** mudanças em templates ou em `frontend/app.css`.
 - Sem CSS ou JS inline: a Content-Security-Policy bloqueia. Cores dinâmicas (amostras de cor) usam o atributo `fill` de SVG.
 - `static/js/loja.js` é só melhoria progressiva: todas as telas funcionam sem JavaScript.
 - Cliente de teste criada pelo `popular_demo`: `cliente@arcana.test` / `arcana-demo-123`. Em `DEBUG`, o pedido tem o botão "Simular pagamento aprovado".

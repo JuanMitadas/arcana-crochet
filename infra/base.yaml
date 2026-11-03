@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Arcana Crochet: base criada uma vez, à mão (ver docs/deploy.md). Repositório de
+  imagens (ECR) e o papel que o GitHub Actions assume para fazer deploy, sem chave
+  de acesso guardada no GitHub.
+
+Parameters:
+  Repositorio:
+    Type: String
+    Default: JuanMitadas/arcana-crochet
+    Description: Repositório do GitHub (dono/nome) autorizado a fazer deploy.
+  AmbienteGithub:
+    Type: String
+    Default: producao
+    Description: Nome do environment do GitHub cujos workflows podem assumir o papel.
+  CriarProvedorOidc:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      "false" se a conta já tiver o provedor token.actions.githubusercontent.com
+      (só pode existir um por conta).
+
+Conditions:
+  DeveCriarProvedor: !Equals [!Ref CriarProvedorOidc, "true"]
+
+Resources:
+  ProvedorGithub:
+    Type: AWS::IAM::OIDCProvider
+    Condition: DeveCriarProvedor
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+
+  # Imagens da Lambda. Guarda só as 3 mais recentes para não acumular custo.
+  Imagens:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: arcana-crochet
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Manter so as 3 imagens mais recentes",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 3
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
+
+  PapelDeploy:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: arcana-github-deploy
+      Description: Assumido pelo GitHub Actions (OIDC) para deploy e backup.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${Repositorio}:environment:${AmbienteGithub}
+      Policies:
+        - PolicyName: deploy-arcana
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # Serviços usados pela pilha da loja (infra/template.yaml).
+              - Effect: Allow
+                Action:
+                  - cloudformation:*
+                  - lambda:*
+                  - cloudfront:*
+                  - scheduler:*
+                  - logs:*
+                  - s3:*
+                Resource: "*"
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:BatchGetImage
+                  - ecr:CompleteLayerUpload
+                  - ecr:DescribeImages
+                  - ecr:DescribeRepositories
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:GetRepositoryPolicy
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:SetRepositoryPolicy
+                  - ecr:UploadLayerPart
+                Resource: !GetAtt Imagens.Arn
+              # A pilha cria papéis próprios (Lambda, agendador); só com o prefixo arcana-.
+              - Effect: Allow
+                Action:
+                  - iam:AttachRolePolicy
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:DeleteRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:GetRole
+                  - iam:GetRolePolicy
+                  - iam:PassRole
+                  - iam:PutRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:UpdateAssumeRolePolicy
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/arcana-*
+              # Segredos lidos pelo CloudFormation ({{resolve:ssm:...}}).
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: !Sub arn:${AWS::Partition}:ssm:*:${AWS::AccountId}:parameter/arcana/*
+
+Outputs:
+  PapelDeployArn:
+    Description: Coloque no secret AWS_ROLE_ARN do environment "producao" no GitHub.
+    Value: !GetAtt PapelDeploy.Arn
+  RepositorioImagens:
+    Description: Repositório ECR das imagens da Lambda.
+    Value: !GetAtt Imagens.RepositoryUri

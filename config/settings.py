@@ -3,15 +3,20 @@
 Tudo que muda entre ambientes vem de variáveis de ambiente (ver .env.example).
 """
 
+import os
 from pathlib import Path
 
 import environ
 from django.utils.csp import CSP
 
+from .ssm import carregar_parametros
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env")
+# Na AWS os segredos ficam no SSM Parameter Store (ver docs/deploy.md).
+carregar_parametros(os.environ.get("AWS_SSM_PREFIX", ""))
 
 # --- Núcleo -----------------------------------------------------------------
 
@@ -20,8 +25,12 @@ DEBUG = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 SITE_URL = env("SITE_URL", default="http://localhost:8000")
-# Em produção use um caminho difícil de adivinhar, além do Cloudflare Access.
+# Em produção use um caminho difícil de adivinhar.
 ADMIN_URL = env("ADMIN_URL", default="admin/")
+
+# Na AWS, o CloudFront envia este segredo em todo pedido à Lambda; pedidos sem ele
+# (alguém chamando a URL da Lambda direto, sem passar pelo CloudFront) recebem 403.
+ORIGEM_SEGREDO = env("ORIGEM_SEGREDO", default="")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -46,6 +55,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "apps.core.middleware.OrigemCloudFrontMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -86,6 +96,11 @@ TEMPLATES = [
 DATABASES = {"default": env.db("DATABASE_URL")}
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
 DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
+if env.bool("DATABASE_POOLER", default=False):
+    # Conexão "pooled" do Neon (PgBouncer em modo transação): sem prepared statements
+    # nem cursores no servidor, que não sobrevivem à troca de conexão entre transações.
+    DATABASES["default"].setdefault("OPTIONS", {})["prepare_threshold"] = None
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- Autenticação -----------------------------------------------------------
@@ -135,7 +150,9 @@ ACCOUNT_RATE_LIMITS = {
 MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]
 MFA_TOTP_ISSUER = "Arcana Crochet"
 
-# Atrás da Cloudflare, o IP real do cliente vem neste cabeçalho.
+# Na AWS, uma CloudFront Function grava o IP do visitante em X-Arcana-Ip (e apaga
+# qualquer valor enviado pelo próprio visitante). Sem isso, todos os pedidos teriam o
+# mesmo IP e o limite de tentativas de login valeria para a loja inteira.
 ALLAUTH_TRUSTED_CLIENT_IP_HEADER = env("TRUSTED_CLIENT_IP_HEADER", default=None)
 
 # --- Internacionalização ----------------------------------------------------
@@ -153,21 +170,20 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = env("MEDIA_URL", default="/media/")
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Com as variáveis do Cloudflare R2 preenchidas, os uploads vão para o R2.
-R2_BUCKET = env("R2_BUCKET", default="")
-if R2_BUCKET:
+# Na AWS (MIDIA_BUCKET definido), as fotos vão para o S3 e são servidas pelo
+# CloudFront no mesmo domínio do site, em /media/.
+MIDIA_BUCKET = env("MIDIA_BUCKET", default="")
+if MIDIA_BUCKET:
     media_storage = {
-        "BACKEND": "storages.backends.s3.S3Storage",
+        "BACKEND": "apps.core.storage.MidiaS3",
         "OPTIONS": {
-            "bucket_name": R2_BUCKET,
-            "endpoint_url": env("R2_ENDPOINT_URL"),
-            "access_key": env("R2_ACCESS_KEY_ID"),
-            "secret_key": env("R2_SECRET_ACCESS_KEY"),
-            "custom_domain": env("R2_PUBLIC_DOMAIN", default=None),
-            "region_name": "auto",
+            "bucket_name": MIDIA_BUCKET,
+            "location": "media",
+            "region_name": env("AWS_REGION", default="sa-east-1"),
             "default_acl": None,
             "querystring_auth": False,
             "file_overwrite": False,
+            "object_parameters": {"CacheControl": "public, max-age=31536000, immutable"},
         },
     }
 else:
@@ -184,8 +200,10 @@ STORAGES = {
     },
 }
 
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+# A URL da Lambda aceita no máximo 6 MB por pedido: fotos maiores precisam ser
+# reduzidas antes do envio (ou, no futuro, enviadas direto ao S3).
+DATA_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
 
 # --- E-mail -----------------------------------------------------------------
 
@@ -213,22 +231,11 @@ MAILERS = {
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Arcana Crochet <nao-responda@localhost>")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
-# --- Cache, sessão e Celery -------------------------------------------------
+# --- Cache -------------------------------------------------------------------
 
-REDIS_URL = env("REDIS_URL", default="")
-if REDIS_URL:
-    CACHES = {
-        "default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": REDIS_URL}
-    }
-else:
-    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
-
-CELERY_BROKER_URL = REDIS_URL or "memory://"
-CELERY_RESULT_BACKEND = None
-CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=not REDIS_URL)
-CELERY_TASK_ACKS_LATE = True
-CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-CELERY_TIMEZONE = TIME_ZONE
+# Na Lambda cada instância tem a própria memória, então o cache (usado no limite de
+# tentativas de login) fica no banco: CACHE_URL=dbcache://cache_django.
+CACHES = {"default": env.cache("CACHE_URL", default="locmemcache://")}
 
 # --- Segurança --------------------------------------------------------------
 
@@ -255,7 +262,8 @@ SECURE_CSP = {
 }
 
 if not DEBUG:
-    # O TLS termina no Caddy, que repassa o protocolo original neste cabeçalho.
+    # O HTTPS termina no CloudFront/URL da Lambda, que informam o protocolo original
+    # neste cabeçalho.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
     SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
@@ -266,6 +274,10 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = False
     # Preload só depois de o domínio estar estável em HTTPS; é difícil de desfazer.
     SILENCED_SYSTEM_CHECKS = ["security.W021"]
+
+# Atrás do CloudFront, o domínio que o visitante digitou chega em X-Forwarded-Host
+# (gravado pela CloudFront Function; o Host original não é repassado à Lambda).
+USE_X_FORWARDED_HOST = env.bool("USE_X_FORWARDED_HOST", default=False)
 
 # --- Regras comerciais da loja ---------------------------------------------
 

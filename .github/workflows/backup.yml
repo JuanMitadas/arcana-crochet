@@ -1,0 +1,43 @@
+name: Backup do banco
+
+# Todo dia às 3h30 (horário de Brasília): exporta o banco do Neon e guarda no S3
+# (o bucket apaga arquivos com mais de 30 dias). Restauração em docs/deploy.md.
+on:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: sa-east-1
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: producao
+    timeout-minutes: 15
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Exportar o banco
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_DIRETA }}
+        run: |
+          docker run --rm -e DATABASE_URL postgres:18 \
+            sh -c 'pg_dump "$DATABASE_URL" --format=custom --no-owner --no-privileges' > banco.dump
+          # Confere se o arquivo é legível antes de guardar.
+          docker run --rm -i postgres:18 pg_restore --list < banco.dump > /dev/null
+          ls -lh banco.dump
+
+      - name: Enviar para o S3
+        run: |
+          bucket=$(aws cloudformation describe-stacks --stack-name arcana-prod \
+            --query "Stacks[0].Outputs[?OutputKey=='BucketBackups'].OutputValue" --output text)
+          aws s3 cp banco.dump "s3://$bucket/banco-$(date -u +%Y-%m-%dT%H%MZ).dump" --only-show-errors
+          echo "Backup enviado para s3://$bucket" >> "$GITHUB_STEP_SUMMARY"
