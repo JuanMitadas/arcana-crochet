@@ -6,12 +6,20 @@ from django.utils import timezone
 from apps.core.templatetags.dinheiro import brl
 
 from .estoque import registrar_movimentacao
-from .models import Categoria, MovimentacaoEstoque, Produto, ProdutoFoto, ProdutoVariacao
+from .models import (
+    Categoria,
+    MovimentacaoEstoque,
+    Produto,
+    ProdutoEspecificacao,
+    ProdutoFoto,
+    ProdutoVariacao,
+)
 
 
 @admin.register(Categoria)
 class CategoriaAdmin(admin.ModelAdmin):
     list_display = ["__str__", "ordem", "ativa"]
+    fields = ["nome", "slug", "pai", "descricao", "imagem", "ordem", "ativa"]
     list_editable = ["ordem", "ativa"]
     prepopulated_fields = {"slug": ["nome"]}
     search_fields = ["nome"]
@@ -20,7 +28,7 @@ class CategoriaAdmin(admin.ModelAdmin):
 class VariacaoInline(admin.TabularInline):
     model = ProdutoVariacao
     extra = 1
-    fields = ["sku", "cor", "tamanho", "preco_ajuste_centavos", "estoque", "ativa"]
+    fields = ["sku", "cor", "cor_hex", "tamanho", "preco_ajuste_centavos", "estoque", "ativa"]
     readonly_fields = ["estoque"]
 
 
@@ -30,16 +38,36 @@ class FotoInline(admin.TabularInline):
     fields = ["imagem", "texto_alternativo", "variacao", "ordem"]
 
 
+class EspecificacaoInline(admin.TabularInline):
+    model = ProdutoEspecificacao
+    extra = 2
+    fields = ["nome", "valor", "ordem"]
+
+
 @admin.register(Produto)
 class ProdutoAdmin(admin.ModelAdmin):
     list_display = ["nome", "categoria", "preco", "status", "destaque", "disponibilidade"]
     list_filter = ["status", "categoria", "disponibilidade", "destaque"]
     search_fields = ["nome", "descricao", "variacoes__sku"]
     prepopulated_fields = {"slug": ["nome"]}
-    inlines = [VariacaoInline, FotoInline]
+    inlines = [VariacaoInline, FotoInline, EspecificacaoInline]
     actions = ["publicar", "pausar"]
     fieldsets = [
-        (None, {"fields": ["nome", "slug", "categoria", "descricao", "material", "status"]}),
+        (
+            None,
+            {
+                "fields": [
+                    "nome",
+                    "slug",
+                    "categoria",
+                    "descricao",
+                    "material",
+                    "cuidados",
+                    "video",
+                    "status",
+                ]
+            },
+        ),
         (
             "Preço",
             {"fields": ["preco_centavos", "preco_promocional_centavos", "custo_centavos"]},

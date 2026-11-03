@@ -1,6 +1,8 @@
 from django.conf import settings
+from django.core.validators import FileExtensionValidator, RegexValidator
 from django.db import models
-from django.db.models import Q
+from django.db.models import Avg, Count, OuterRef, Q, Subquery, Sum
+from django.db.models.functions import Coalesce
 from django.urls import reverse
 
 from apps.core.models import ModeloBase
@@ -17,6 +19,10 @@ class Categoria(ModeloBase):
     )
     nome = models.CharField(max_length=80)
     slug = models.SlugField(max_length=90, unique=True)
+    descricao = models.CharField("descrição curta", max_length=160, blank=True)
+    imagem = models.ImageField(
+        upload_to="categorias/", blank=True, help_text="Foto usada no card da categoria."
+    )
     ordem = models.PositiveSmallIntegerField(default=0)
     ativa = models.BooleanField(default=True)
 
@@ -33,6 +39,32 @@ class ProdutoQuerySet(models.QuerySet):
     def visiveis(self):
         """Produtos que aparecem na vitrine."""
         return self.filter(status__in=[Produto.Status.ATIVO, Produto.Status.ESGOTADO])
+
+    def com_metricas(self):
+        """Anota preço efetivo, nota média, nº de avaliações e unidades vendidas.
+
+        Usa subconsultas (e não JOIN + agregação) para que os números não se
+        multipliquem quando a consulta também filtra por variações."""
+        from apps.avaliacoes.models import Avaliacao
+        from apps.pedidos.models import Pedido, PedidoItem
+
+        avaliacoes = Avaliacao.objects.filter(
+            produto=OuterRef("pk"), status=Avaliacao.Status.PUBLICADA
+        ).values("produto")
+        vendidos = (
+            PedidoItem.objects.filter(
+                produto=OuterRef("pk"), pedido__status__in=Pedido.STATUS_PAGOS
+            )
+            .values("produto")
+            .annotate(total=Sum("quantidade"))
+            .values("total")
+        )
+        return self.annotate(
+            preco_efetivo=Coalesce("preco_promocional_centavos", "preco_centavos"),
+            nota_media=Subquery(avaliacoes.annotate(m=Avg("nota")).values("m")),
+            total_avaliacoes=Coalesce(Subquery(avaliacoes.annotate(c=Count("pk")).values("c")), 0),
+            unidades_vendidas=Coalesce(Subquery(vendidos), 0),
+        )
 
 
 class Produto(ModeloBase):
@@ -71,6 +103,18 @@ class Produto(ModeloBase):
     largura_cm = models.PositiveSmallIntegerField("largura (cm)")
     comprimento_cm = models.PositiveSmallIntegerField("comprimento (cm)")
     material = models.CharField(max_length=60, blank=True)
+    cuidados = models.TextField(
+        "cuidados com a peça",
+        blank=True,
+        help_text="Ex.: lavar à mão em água fria, secar à sombra, na horizontal.",
+    )
+    video = models.FileField(
+        "vídeo",
+        upload_to="produtos/videos/",
+        blank=True,
+        validators=[FileExtensionValidator(["mp4", "webm"])],
+        help_text="Opcional. MP4 ou WebM curto, até ~20 MB.",
+    )
     personalizavel = models.BooleanField("aceita personalização", default=False)
     destaque = models.BooleanField(default=False, help_text="Aparece na página inicial.")
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.RASCUNHO)
@@ -122,6 +166,13 @@ class ProdutoVariacao(ModeloBase):
     sku = models.CharField("SKU", max_length=40, unique=True)
     cor = models.CharField(max_length=40, blank=True)
     tamanho = models.CharField(max_length=20, blank=True)
+    cor_hex = models.CharField(
+        "cor (hex)",
+        max_length=7,
+        blank=True,
+        validators=[RegexValidator(r"^#[0-9a-fA-F]{6}$", "Use o formato #1a2b3c.")],
+        help_text="Cor da bolinha no seletor, ex.: #17597c.",
+    )
     preco_ajuste_centavos = models.BigIntegerField("ajuste de preço (centavos)", default=0)
     estoque = models.PositiveIntegerField(
         default=0,
@@ -154,6 +205,23 @@ class ProdutoVariacao(ModeloBase):
     @property
     def preco_centavos(self) -> int:
         return self.produto.preco_atual_centavos + self.preco_ajuste_centavos
+
+
+class ProdutoEspecificacao(models.Model):
+    """Linha da ficha técnica, ex.: "Altura" = "18 cm"."""
+
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name="especificacoes")
+    nome = models.CharField(max_length=60)
+    valor = models.CharField(max_length=200)
+    ordem = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "item da ficha técnica"
+        verbose_name_plural = "ficha técnica"
+        ordering = ["ordem", "id"]
+
+    def __str__(self):
+        return f"{self.nome}: {self.valor}"
 
 
 def caminho_foto(instancia, nome_arquivo):

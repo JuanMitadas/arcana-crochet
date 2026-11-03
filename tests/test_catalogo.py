@@ -93,23 +93,25 @@ class TestEstoque:
 
 
 class TestVitrine:
-    def test_mostra_so_produtos_visiveis(self, client, criar_produto):
+    def test_home_mostra_so_produtos_visiveis(self, client, criar_produto):
         criar_produto(nome="Urso ativo", slug="urso-ativo")
         criar_produto(nome="Urso rascunho", slug="urso-rascunho", status=Produto.Status.RASCUNHO)
         conteudo = client.get("/").content.decode()
         assert "Urso ativo" in conteudo
         assert "Urso rascunho" not in conteudo
 
-    def test_requisicao_htmx_devolve_so_a_grade(self, client, produto):
-        resposta = client.get("/", headers={"HX-Request": "true"})
+    def test_listagem_com_htmx_devolve_so_os_resultados(self, client, produto):
+        resposta = client.get("/loja/", headers={"HX-Request": "true", "HX-Target": "resultados"})
         conteudo = resposta.content.decode()
-        assert 'id="grade"' in conteudo
+        assert produto.nome in conteudo
         assert "<html" not in conteudo
 
     def test_detalhe_do_produto(self, client, produto, variacao):
         resposta = client.get(produto.get_absolute_url())
         assert resposta.status_code == 200
-        assert "R$ 129,90" in resposta.content.decode()
+        conteudo = resposta.content.decode()
+        assert "R$ 129,90" in conteudo
+        assert "R$ 123,41" in conteudo  # preço no Pix (5% de desconto)
 
     def test_rascunho_nao_tem_pagina_publica(self, client, criar_produto):
         produto = criar_produto(status=Produto.Status.RASCUNHO)
@@ -125,6 +127,9 @@ class TestPainel:
             f"/admin/catalogo/produto/{produto.pk}/change/",
             "/admin/catalogo/movimentacaoestoque/add/",
             "/admin/contas/usuario/add/",
+            "/admin/pedidos/pedido/",
+            "/admin/pedidos/cupom/add/",
+            "/admin/avaliacoes/avaliacao/",
         ]:
             assert client.get(url).status_code == 200, url
 

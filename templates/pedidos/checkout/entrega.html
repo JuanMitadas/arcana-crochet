@@ -1,0 +1,63 @@
+{% extends "pedidos/checkout/base.html" %}
+{% load dinheiro loja %}
+
+{% block etapa %}
+<h1 class="text-3xl md:text-4xl">Onde entregamos?</h1>
+
+<form method="post" class="mt-8 flex flex-col gap-8" novalidate>
+  {% csrf_token %}
+  <fieldset>
+    <legend class="mb-3 text-lg font-bold">Endereço</legend>
+    <div class="flex flex-col gap-3">
+      {% for e in enderecos %}
+        <label class="escolha">
+          <input type="radio" name="endereco" value="{{ e.pk }}" {% if not mostrar_form and e == selecionado %}checked{% endif %}>
+          <span class="flex-1 text-sm leading-relaxed">
+            <strong class="text-base">{{ e.apelido|default:e.destinatario }}</strong>{% if e.padrao %} <span class="etiqueta etiqueta--turquesa ml-1">principal</span>{% endif %}<br>
+            {{ e.logradouro }}, {{ e.numero }}{% if e.complemento %} ({{ e.complemento }}){% endif %}<br>
+            {{ e.bairro }}, {{ e.cidade }}/{{ e.uf }}, CEP {{ e.cep|cep }}<br>
+            <span class="text-ardosia">Para {{ e.destinatario }}, {{ e.telefone|telefone }}</span>
+          </span>
+        </label>
+      {% endfor %}
+      {% if enderecos %}
+        <label class="escolha">
+          <input type="radio" name="endereco" value="novo" {% if mostrar_form %}checked{% endif %} data-novo-endereco>
+          <span class="font-semibold">Entregar em outro endereço</span>
+        </label>
+      {% else %}
+        <input type="hidden" name="endereco" value="novo">
+      {% endif %}
+    </div>
+
+    <div class="painel mt-4 p-5 {% if enderecos and not mostrar_form %}js-escondido{% endif %}" data-form-endereco>
+      {% include "componentes/form_endereco.html" %}
+    </div>
+  </fieldset>
+
+  {% with opcoes=carrinho.opcoes_frete escolhido=carrinho.frete %}
+  <fieldset>
+    <legend class="mb-3 text-lg font-bold">Forma de entrega</legend>
+    {% if opcoes %}
+      <div class="grid gap-3 sm:grid-cols-2">
+        {% for opcao in opcoes %}
+          <label class="escolha">
+            <input type="radio" name="frete" value="{{ opcao.codigo }}" {% if opcao.codigo == escolhido.codigo %}checked{% endif %}>
+            <span class="flex-1"><strong>{{ opcao.nome }}</strong><br><span class="text-sm text-ardosia">chega em até {{ opcao.descricao_prazo }}{% if carrinho.prazo_producao_dias %}, contando a produção{% endif %}</span></span>
+            <strong class="numeros-tabulares {% if opcao.gratis %}text-verde{% endif %}">{% if opcao.gratis %}Grátis{% else %}{{ opcao.preco_centavos|brl }}{% endif %}</strong>
+          </label>
+        {% endfor %}
+      </div>
+      <p class="mt-2 text-xs text-ardosia">Frete para o CEP {{ carrinho.cep|cep }}. Se mudar o endereço, recalculamos.</p>
+    {% else %}
+      <p class="text-sm text-ardosia">Escolha ou cadastre um endereço para ver as opções de entrega.</p>
+    {% endif %}
+  </fieldset>
+  {% endwith %}
+
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <a class="link" href="{% url 'pedidos:sacola' %}">Voltar para a sacola</a>
+    <button type="submit" class="btn btn-primario btn-grande">Continuar para o pagamento</button>
+  </div>
+</form>
+{% endblock %}

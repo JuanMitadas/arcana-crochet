@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% load dinheiro loja %}
+
+{% block head_title %}{% if termo %}Busca: {{ termo }}{% elif categoria %}{{ categoria.nome }}{% elif filtros.promocao %}Ofertas{% else %}Todas as peças{% endif %} | Arcana Crochet{% endblock %}
+{% block meta_description %}{% if categoria.descricao %}{{ categoria.descricao }}{% else %}Peças de crochê feitas à mão pela Arcana Crochet.{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-loja pt-6">
+  <nav class="migalhas" aria-label="Você está em">
+    <ol>
+      <li><a href="{% url 'catalogo:home' %}">Início</a></li>
+      {% if categoria %}
+        <li><a href="{% url 'catalogo:vitrine' %}">Loja</a></li>
+        {% if categoria.pai %}<li><a href="{% url 'catalogo:categoria' categoria.pai.slug %}">{{ categoria.pai.nome }}</a></li>{% endif %}
+        <li aria-current="page">{{ categoria.nome }}</li>
+      {% elif termo %}
+        <li aria-current="page">Busca</li>
+      {% else %}
+        <li aria-current="page">Loja</li>
+      {% endif %}
+    </ol>
+  </nav>
+
+  <header class="mt-4">
+    <h1 class="text-4xl md:text-5xl">
+      {% if termo %}Resultados para “{{ termo }}”{% elif categoria %}{{ categoria.nome }}{% elif filtros.promocao %}Ofertas{% else %}Todas as peças{% endif %}
+    </h1>
+    {% if categoria.descricao %}<p class="mt-2 max-w-2xl text-ardosia">{{ categoria.descricao }}</p>{% endif %}
+    {% if categoria.filhas.all %}
+      <ul class="mt-5 flex flex-wrap gap-2" aria-label="Subcategorias">
+        {% for filha in categoria.filhas.all %}
+          <li><a class="chip pr-3" href="{% url 'catalogo:categoria' filha.slug %}">{{ filha.nome }}</a></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </header>
+
+  <form id="filtros" method="get" action="{{ request.path }}"
+        hx-get="{{ request.path }}" hx-target="#resultados" hx-push-url="true" hx-trigger="change, submit"
+        class="mt-8 grid gap-8 lg:grid-cols-[15.5rem_minmax(0,1fr)] lg:gap-12">
+    {% if termo %}<input type="hidden" name="q" value="{{ termo }}">{% endif %}
+
+    <details class="filtros-gaveta self-start lg:sticky lg:top-40" open data-filtros>
+      <summary class="btn btn-secundario w-full lg:hidden">
+        <svg class="icone" aria-hidden="true"><use href="#i-filtro"/></svg> Filtrar{% if chips %} ({{ chips|length }}){% endif %}
+      </summary>
+      <div class="mt-4 lg:mt-0">
+        <h2 class="sr-only">Filtros</h2>
+
+        <details class="filtro" open>
+          <summary>Preço <svg class="icone" aria-hidden="true"><use href="#i-abaixo"/></svg></summary>
+          <ul class="flex flex-col gap-1 pb-3">
+            {% for nome, minimo, maximo in faixas_preco %}
+              <li><a class="opcao-filtro no-underline hover:text-azul {% if filtros.preco_min == minimo and filtros.preco_max == maximo %}text-azul font-bold{% endif %}" href="{% url_com preco_min=minimo preco_max=maximo %}">{{ nome }}</a></li>
+            {% endfor %}
+          </ul>
+          <div class="flex items-end gap-2 pb-4">
+            <div class="campo">
+              <label for="preco_min" class="text-xs">Mínimo (R$)</label>
+              <input id="preco_min" name="preco_min" inputmode="decimal" value="{{ filtros.preco_min }}" placeholder="0" class="!py-2">
+            </div>
+            <div class="campo">
+              <label for="preco_max" class="text-xs">Máximo (R$)</label>
+              <input id="preco_max" name="preco_max" inputmode="decimal" value="{{ filtros.preco_max }}" placeholder="500" class="!py-2">
+            </div>
+            <button type="submit" class="btn-redondo shrink-0 !w-10 !h-10" aria-label="Aplicar faixa de preço"><svg class="icone" aria-hidden="true"><use href="#i-direita"/></svg></button>
+          </div>
+        </details>
+
+        {% if facetas.cores %}
+        <details class="filtro" open>
+          <summary>Cor <svg class="icone" aria-hidden="true"><use href="#i-abaixo"/></svg></summary>
+          <ul class="flex flex-col pb-4">
+            {% for cor in facetas.cores %}
+              <li>
+                <label class="opcao-filtro">
+                  <input type="checkbox" name="cor" value="{{ cor.cor }}" {% if cor.cor in filtros.cores %}checked{% endif %}>
+                  <svg class="w-4 h-4 flex-none" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="{{ cor.cor_hex|default:'#e6e0bf' }}" stroke="#034947" stroke-opacity=".25"/></svg>
+                  {{ cor.cor }} <small>{{ cor.total }}</small>
+                </label>
+              </li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% endif %}
+
+        {% if facetas.tamanhos %}
+        <details class="filtro" open>
+          <summary>Tamanho <svg class="icone" aria-hidden="true"><use href="#i-abaixo"/></svg></summary>
+          <ul class="flex flex-wrap gap-2 pb-4">
+            {% for t in facetas.tamanhos %}
+              <li><label class="amostra amostra--tamanho"><input type="checkbox" name="tamanho" value="{{ t.tamanho }}" {% if t.tamanho in filtros.tamanhos %}checked{% endif %}><span>{{ t.tamanho }}</span></label></li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% endif %}
+
+        {% if facetas.materiais %}
+        <details class="filtro" open>
+          <summary>Material <svg class="icone" aria-hidden="true"><use href="#i-abaixo"/></svg></summary>
+          <ul class="flex flex-col pb-4">
+            {% for m in facetas.materiais %}
+              <li><label class="opcao-filtro"><input type="checkbox" name="material" value="{{ m.material }}" {% if m.material in filtros.materiais %}checked{% endif %}>{{ m.material }} <small>{{ m.total }}</small></label></li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% endif %}
+
+        <details class="filtro" open>
+          <summary>Disponibilidade <svg class="icone" aria-hidden="true"><use href="#i-abaixo"/></svg></summary>
+          <ul class="flex flex-col pb-4">
+            <li><label class="opcao-filtro"><input type="radio" name="disponibilidade" value="" {% if not filtros.disponibilidade %}checked{% endif %}>Todas</label></li>
+            {% for d in facetas.disponibilidade %}
+              <li><label class="opcao-filtro"><input type="radio" name="disponibilidade" value="{{ d.disponibilidade }}" {% if filtros.disponibilidade == d.disponibilidade %}checked{% endif %}>{{ d.nome }} <small>{{ d.total }}</small></label></li>
+            {% endfor %}
+            {% if facetas.em_promocao %}
+              <li class="mt-2"><label class="opcao-filtro"><input type="checkbox" name="promocao" value="1" {% if filtros.promocao %}checked{% endif %}>Só peças em promoção <small>{{ facetas.em_promocao }}</small></label></li>
+            {% endif %}
+          </ul>
+        </details>
+
+        <noscript><button type="submit" class="btn btn-primario btn-bloco mt-2">Aplicar filtros</button></noscript>
+      </div>
+    </details>
+
+    <div>
+      <div class="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-creme-3 pb-4">
+        <p class="text-sm text-ardosia" id="total-resultados" aria-live="polite"><strong class="text-petroleo">{{ total }}</strong> peça{{ total|pluralize }}</p>
+        <div class="flex items-center gap-2">
+          <label for="ordem" class="text-sm whitespace-nowrap">Ordenar por</label>
+          <select id="ordem" name="ordem" class="!w-auto !rounded-full !py-2 !pl-4 !pr-9">
+            {% for chave, nome in ordenacoes %}<option value="{{ chave }}" {% if chave == ordem %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <section id="resultados" aria-label="Peças encontradas">
+        {% partialdef resultados inline %}
+          {% if request.htmx %}<div hx-swap-oob="innerHTML:#total-resultados"><strong class="text-petroleo">{{ total }}</strong> peça{{ total|pluralize }}</div>{% endif %}
+          {% if chips %}
+            <ul class="mb-6 flex flex-wrap items-center gap-2" aria-label="Filtros aplicados">
+              {% for rotulo, url in chips %}
+                <li><a class="chip" href="{{ url }}" aria-label="Remover filtro {{ rotulo }}">{{ rotulo }} <svg class="icone" aria-hidden="true"><use href="#i-fechar"/></svg></a></li>
+              {% endfor %}
+              <li><a class="link text-sm" href="{{ request.path }}{% if termo %}?q={{ termo|urlencode }}{% endif %}">Limpar tudo</a></li>
+            </ul>
+          {% endif %}
+
+          {% if produtos %}
+            <ul class="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 xl:grid-cols-4 lg:gap-x-6">
+              {% for produto in produtos %}<li>{% include "componentes/card_produto.html" %}</li>{% endfor %}
+            </ul>
+
+            {% if pagina.has_other_pages %}
+              <nav class="paginacao mt-12" aria-label="Páginas">
+                {% if pagina.has_previous %}<a href="{% url_com page=pagina.previous_page_number %}" aria-label="Página anterior"><svg class="icone" aria-hidden="true"><use href="#i-esquerda"/></svg></a>{% endif %}
+                {% for numero in pagina.paginator.page_range %}
+                  {% if numero == pagina.number %}<span aria-current="page">{{ numero }}</span>
+                  {% elif numero > pagina.number|add:-3 and numero < pagina.number|add:3 %}<a href="{% url_com page=numero %}">{{ numero }}</a>{% endif %}
+                {% endfor %}
+                {% if pagina.has_next %}<a href="{% url_com page=pagina.next_page_number %}" aria-label="Próxima página"><svg class="icone" aria-hidden="true"><use href="#i-direita"/></svg></a>{% endif %}
+              </nav>
+            {% endif %}
+          {% else %}
+            <div class="painel-suave flex flex-col items-center px-6 py-14 text-center">
+              <svg class="icone w-10 h-10 text-turquesa" aria-hidden="true"><use href="#i-agulha"/></svg>
+              <h2 class="mt-4 text-2xl">{% if termo %}Nenhuma peça encontrada para “{{ termo }}”{% else %}Nenhuma peça com esses filtros{% endif %}</h2>
+              <p class="mt-2 max-w-md text-ardosia">{% if termo %}Confira a ortografia ou tente uma palavra mais simples, como “urso” ou “bolsa”.{% else %}Tire algum filtro para ver mais opções.{% endif %}</p>
+              {% if chips %}<a class="btn btn-secundario mt-6" href="{{ request.path }}{% if termo %}?q={{ termo|urlencode }}{% endif %}">Limpar filtros</a>{% endif %}
+              {% if termo %}<p class="mt-6 text-sm">Quer algo sob medida? <a class="link" href="mailto:{{ loja.EMAIL_ATENDIMENTO }}">Peça uma encomenda</a>.</p>{% endif %}
+            </div>
+            {% if sugestoes %}
+              <h3 class="mt-12 mb-6 text-2xl">Talvez você goste destas</h3>
+              <ul class="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 xl:grid-cols-4">
+                {% for produto in sugestoes %}<li>{% include "componentes/card_produto.html" %}</li>{% endfor %}
+              </ul>
+            {% endif %}
+          {% endif %}
+        {% endpartialdef %}
+      </section>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
+    "django.contrib.postgres",
     # terceiros
     "allauth",
     "allauth.account",
@@ -40,6 +41,8 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.contas",
     "apps.catalogo",
+    "apps.pedidos",
+    "apps.avaliacoes",
 ]
 
 MIDDLEWARE = [
@@ -70,6 +73,9 @@ TEMPLATES = [
                 "django.template.context_processors.csp",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.core.contexto.loja",
+                "apps.catalogo.contexto.menu_categorias",
+                "apps.pedidos.contexto.sacola",
             ],
         },
     },
@@ -106,7 +112,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LOGIN_REDIRECT_URL = "catalogo:vitrine"
+LOGIN_REDIRECT_URL = "pedidos:lista"
 LOGIN_URL = "account_login"
 
 # django-allauth: login só por e-mail, com verificação obrigatória.
@@ -117,6 +123,10 @@ ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE = False
+# Autenticação rápida: código de 6 dígitos por e-mail para confirmar o cadastro
+# e para entrar sem senha (útil no checkout).
+ACCOUNT_EMAIL_VERIFICATION_BY_CODE_ENABLED = True
+ACCOUNT_LOGIN_BY_CODE_ENABLED = True
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "[Arcana Crochet] "
 ACCOUNT_RATE_LIMITS = {
     # 10 falhas por minuto por IP e 5 a cada 15 minutos por conta.
@@ -235,7 +245,9 @@ SECURE_CSP = {
     "style-src": [CSP.SELF],
     "img-src": [CSP.SELF, "data:", *env.list("CSP_IMG_SRC", default=[])],
     "font-src": [CSP.SELF],
-    "connect-src": [CSP.SELF],
+    # ViaCEP preenche o endereço a partir do CEP no checkout.
+    "connect-src": [CSP.SELF, "https://viacep.com.br"],
+    "media-src": [CSP.SELF, *env.list("CSP_IMG_SRC", default=[])],
     "frame-ancestors": [CSP.NONE],
     "form-action": [CSP.SELF],
     "base-uri": [CSP.SELF],
@@ -254,6 +266,19 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = False
     # Preload só depois de o domínio estar estável em HTTPS; é difícil de desfazer.
     SILENCED_SYSTEM_CHECKS = ["security.W021"]
+
+# --- Regras comerciais da loja ---------------------------------------------
+
+LOJA = {
+    "PIX_DESCONTO_PCT": env.int("LOJA_PIX_DESCONTO_PCT", default=5),
+    "PARCELAS_SEM_JUROS": env.int("LOJA_PARCELAS_SEM_JUROS", default=3),
+    "PARCELA_MINIMA_CENTAVOS": env.int("LOJA_PARCELA_MINIMA_CENTAVOS", default=2000),
+    "FRETE_GRATIS_A_PARTIR_CENTAVOS": env.int("LOJA_FRETE_GRATIS_A_PARTIR_CENTAVOS", default=29900),
+    "CEP_ORIGEM": env("LOJA_CEP_ORIGEM", default="06700000"),
+    "WHATSAPP": env("LOJA_WHATSAPP", default=""),
+    "EMAIL_ATENDIMENTO": env("LOJA_EMAIL_ATENDIMENTO", default="contato@arcanacrochet.com.br"),
+    "INSTAGRAM": env("LOJA_INSTAGRAM", default="arcanacrochet"),
+}
 
 # --- Logs -------------------------------------------------------------------
 

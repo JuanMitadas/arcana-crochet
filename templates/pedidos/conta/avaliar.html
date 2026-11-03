@@ -1,0 +1,41 @@
+{% extends "pedidos/conta/base.html" %}
+{% load loja %}
+
+{% block head_title %}Avaliar {{ item.nome }} | Arcana Crochet{% endblock %}
+
+{% block conta %}
+<a class="link text-sm" href="{{ item.pedido.get_absolute_url }}">Voltar ao pedido {{ item.pedido.codigo }}</a>
+<div class="mt-4 grid gap-8 md:grid-cols-[12rem_minmax(0,1fr)]">
+  {% with foto=item.produto|foto_principal %}
+    <div class="arco mx-auto w-40 md:w-full">{% if foto %}<img src="{{ foto.imagem.url }}" alt="{{ foto.texto_alternativo }}" width="192" height="240">{% endif %}</div>
+  {% endwith %}
+  <div>
+    <h1 class="text-4xl">Como ficou sua {{ item.nome|lower }}?</h1>
+    {% if item.detalhes %}<p class="mt-1 text-ardosia">{{ item.detalhes }}</p>{% endif %}
+
+    <form method="post" class="mt-6 flex flex-col gap-5">
+      {% csrf_token %}
+      <fieldset>
+        <legend class="mb-2 font-semibold">Sua nota</legend>
+        <div class="nota-input">
+          {% for valor, rotulo in form.nota.field.choices %}
+            <input type="radio" id="nota-{{ valor }}" name="nota" value="{{ valor }}" {% if form.nota.value|stringformat:"s" == valor|stringformat:"s" %}checked{% endif %} required>
+            <label for="nota-{{ valor }}" title="{{ rotulo }}"><span class="sr-only">{{ rotulo }}</span><svg class="icone" aria-hidden="true"><use href="#i-estrela"/></svg></label>
+          {% endfor %}
+        </div>
+        {% for erro in form.nota.errors %}<p class="erro text-sm font-semibold text-alerta">{{ erro }}</p>{% endfor %}
+      </fieldset>
+      <div class="campo">
+        <label for="{{ form.titulo.id_for_label }}">{{ form.titulo.label }}</label>
+        {{ form.titulo }}
+      </div>
+      <div class="campo">
+        <label for="{{ form.comentario.id_for_label }}">{{ form.comentario.label }}</label>
+        {{ form.comentario }}
+        <span class="ajuda">Seu nome aparece como {{ user.nome_exibicao|default:"o primeiro nome do seu cadastro" }}. Avaliações passam por uma revisão rápida antes de aparecer.</span>
+      </div>
+      <div><button type="submit" class="btn btn-primario btn-grande">Publicar avaliação</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

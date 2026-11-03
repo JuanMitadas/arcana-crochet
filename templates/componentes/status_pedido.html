@@ -1,0 +1,1 @@
+<span class="etiqueta {% if pedido.status == 'cancelado' %}etiqueta--alerta{% elif pedido.status == 'entregue' %}etiqueta--turquesa{% elif pedido.status == 'aguardando_pagamento' %}border border-azul/30 !bg-ceu !text-azul{% else %}etiqueta--escura{% endif %}">{{ pedido.get_status_display }}</span>

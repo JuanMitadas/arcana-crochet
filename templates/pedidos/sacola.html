@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load dinheiro loja %}
+
+{% block head_title %}Sua sacola | Arcana Crochet{% endblock %}
+
+{% block content %}
+<div class="container-loja pt-8">
+  <h1 class="text-4xl md:text-5xl">Sua sacola</h1>
+
+  <div id="sacola" class="mt-8">
+  {% partialdef conteudo inline %}
+    {% if request.htmx %}
+      <span id="contador-sacola" class="contador" hx-swap-oob="outerHTML" {% if not carrinho.quantidade_total %}hidden{% endif %}>{{ carrinho.quantidade_total }}</span>
+    {% endif %}
+    {% if carrinho.itens %}
+    <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-12">
+      <section aria-label="Itens da sacola">
+        {% if carrinho.falta_para_frete_gratis_centavos %}
+          <div class="painel-suave mb-6 p-4">
+            <p class="text-sm">Faltam <strong>{{ carrinho.falta_para_frete_gratis_centavos|brl }}</strong> para ganhar <strong>frete grátis</strong> no PAC.</p>
+            <progress class="barra mt-2" max="{{ loja.FRETE_GRATIS_A_PARTIR_CENTAVOS }}" value="{{ carrinho.subtotal_centavos }}" aria-label="Progresso até o frete grátis"></progress>
+          </div>
+        {% elif loja.FRETE_GRATIS_A_PARTIR_CENTAVOS %}
+          <p class="mensagem mb-6"><svg class="icone" aria-hidden="true"><use href="#i-caminhao"/></svg>Você ganhou frete grátis no PAC.</p>
+        {% endif %}
+
+        <ul class="flex flex-col divide-y divide-creme-3 border-y border-creme-3">
+          {% for item in carrinho.itens %}
+            <li class="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-4 py-5 sm:grid-cols-[7rem_minmax(0,1fr)_auto] sm:gap-6">
+              <a href="{{ item.produto.get_absolute_url }}" class="arco block !aspect-[4/5]" tabindex="-1" aria-hidden="true">
+                {% if item.foto %}<img src="{{ item.foto.imagem.url }}" alt="" width="112" height="140" loading="lazy">{% endif %}
+              </a>
+              <div class="min-w-0">
+                <h2 class="text-lg"><a class="no-underline hover:underline" href="{{ item.produto.get_absolute_url }}">{{ item.produto.nome }}</a></h2>
+                {% if item.detalhes %}<p class="text-sm text-ardosia">{{ item.detalhes }}</p>{% endif %}
+                {% if item.sob_encomenda %}
+                  <p class="mt-1"><span class="etiqueta etiqueta--turquesa"><svg class="icone w-3.5 h-3.5" aria-hidden="true"><use href="#i-relogio"/></svg>Sob encomenda, até {{ item.produto.prazo_producao_dias }} dias</span></p>
+                {% elif item.maximo <= 2 %}
+                  <p class="mt-1 text-xs font-semibold text-turquesa">{% if item.maximo == 1 %}Peça única{% else %}Últimas {{ item.maximo }} unidades{% endif %}</p>
+                {% endif %}
+                <p class="mt-1 text-sm">{{ item.preco_unitario_centavos|brl }} cada</p>
+
+                <form method="post" action="{% url 'pedidos:atualizar_item' item.variacao.pk %}" hx-post="{% url 'pedidos:atualizar_item' item.variacao.pk %}" hx-target="#sacola" class="mt-3 flex flex-wrap items-center gap-3">
+                  {% csrf_token %}
+                  <div class="quantidade">
+                    <button type="submit" name="acao" value="menos" aria-label="Diminuir quantidade de {{ item.produto.nome }}" {% if item.quantidade <= 1 %}disabled{% endif %}><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-menos"/></svg></button>
+                    <label class="sr-only" for="qtd-{{ forloop.counter }}">Quantidade</label>
+                    <input id="qtd-{{ forloop.counter }}" type="number" name="quantidade" value="{{ item.quantidade }}" min="1" max="{{ item.maximo }}" inputmode="numeric" hx-post="{% url 'pedidos:atualizar_item' item.variacao.pk %}" hx-trigger="change delay:400ms" hx-target="#sacola" hx-include="closest form">
+                    <button type="submit" name="acao" value="mais" aria-label="Aumentar quantidade de {{ item.produto.nome }}" {% if item.quantidade >= item.maximo %}disabled{% endif %}><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-mais"/></svg></button>
+                  </div>
+                  <button type="submit" name="acao" value="remover" class="inline-flex items-center gap-1 text-sm font-semibold text-ardosia hover:text-alerta">
+                    <svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-lixeira"/></svg>Remover
+                  </button>
+                </form>
+              </div>
+              <p class="col-start-2 text-lg font-bold numeros-tabulares sm:col-start-3 sm:row-start-1 sm:text-right">{{ item.total_centavos|brl }}</p>
+            </li>
+          {% endfor %}
+        </ul>
+        <a class="link mt-6 inline-block" href="{% url 'catalogo:vitrine' %}">Continuar comprando</a>
+      </section>
+
+      <aside class="self-start lg:sticky lg:top-40" aria-labelledby="titulo-resumo">
+        <div class="painel p-5 md:p-6">
+          <h2 id="titulo-resumo" class="text-2xl">Resumo</h2>
+
+          {# Cupom #}
+          <form method="post" action="{% url 'pedidos:cupom' %}" hx-post="{% url 'pedidos:cupom' %}" hx-target="#sacola" class="mt-5">
+            {% csrf_token %}
+            {% if carrinho.cupom_valido %}
+              <div class="flex items-center justify-between gap-3 rounded-xl bg-nevoa px-4 py-3 text-sm text-verde">
+                <span class="flex items-center gap-2"><svg class="icone" aria-hidden="true"><use href="#i-cupom"/></svg><span><strong>{{ carrinho.cupom_valido.codigo }}</strong><br>{{ carrinho.cupom_valido.descricao }}</span></span>
+                <button type="submit" name="acao" value="remover" class="link text-xs">Remover</button>
+              </div>
+            {% else %}
+              <label for="cupom" class="mb-1 block">Cupom de desconto</label>
+              <div class="flex gap-2">
+                <input id="cupom" name="cupom" value="{{ carrinho.cupom_codigo }}" placeholder="Digite o cupom" autocapitalize="characters" class="!rounded-full">
+                <button type="submit" class="btn btn-secundario">Aplicar</button>
+              </div>
+              {% if carrinho.cupom_erro %}<p class="mt-1 text-sm font-semibold text-alerta" role="alert">{{ carrinho.cupom_erro }}</p>{% endif %}
+            {% endif %}
+          </form>
+
+          {# Frete #}
+          <form method="post" action="{% url 'pedidos:frete' %}" hx-post="{% url 'pedidos:frete' %}" hx-target="#sacola" hx-trigger="submit, change from:[name=frete]" class="mt-5">
+            {% csrf_token %}
+            <label for="cep-sacola" class="mb-1 block">Frete</label>
+            <div class="flex gap-2">
+              <input id="cep-sacola" name="cep" value="{{ carrinho.cep|cep }}" placeholder="Seu CEP" inputmode="numeric" autocomplete="postal-code" maxlength="9" data-cep-mascara class="!rounded-full">
+              <button type="submit" class="btn btn-secundario">Calcular</button>
+            </div>
+            {% with opcoes=carrinho.opcoes_frete escolhido=carrinho.frete %}
+              {% if opcoes %}
+                <fieldset class="mt-3 flex flex-col gap-2">
+                  <legend class="sr-only">Forma de entrega</legend>
+                  {% for opcao in opcoes %}
+                    <label class="escolha !p-3 text-sm">
+                      <input type="radio" name="frete" value="{{ opcao.codigo }}" {% if opcao.codigo == escolhido.codigo %}checked{% endif %}>
+                      <span class="flex-1"><strong>{{ opcao.nome }}</strong><br><span class="text-ardosia">até {{ opcao.descricao_prazo }}</span></span>
+                      <strong class="numeros-tabulares {% if opcao.gratis %}text-verde{% endif %}">{% if opcao.gratis %}Grátis{% else %}{{ opcao.preco_centavos|brl }}{% endif %}</strong>
+                    </label>
+                  {% endfor %}
+                </fieldset>
+              {% elif carrinho.cep %}
+                <p class="mt-1 text-sm font-semibold text-alerta">Digite um CEP com 8 números.</p>
+              {% endif %}
+            {% endwith %}
+          </form>
+
+          <dl class="mt-6 flex flex-col gap-2 border-t border-creme-3 pt-5 text-sm">
+            <div class="flex justify-between"><dt>Produtos ({{ carrinho.quantidade_total }})</dt><dd class="numeros-tabulares">{{ carrinho.subtotal_centavos|brl }}</dd></div>
+            {% if carrinho.desconto_cupom_centavos %}<div class="flex justify-between text-verde"><dt>Cupom</dt><dd class="numeros-tabulares">−{{ carrinho.desconto_cupom_centavos|brl }}</dd></div>{% endif %}
+            <div class="flex justify-between"><dt>Frete</dt><dd class="numeros-tabulares">{% if carrinho.frete %}{% if carrinho.frete.gratis %}Grátis{% else %}{{ carrinho.frete_centavos|brl }}{% endif %}{% else %}<span class="text-ardosia">informe o CEP</span>{% endif %}</dd></div>
+            <div class="mt-2 flex items-baseline justify-between border-t border-creme-3 pt-4 text-base"><dt class="font-bold">Total</dt><dd class="font-titulo text-2xl font-bold numeros-tabulares">{{ carrinho.total_centavos|brl }}</dd></div>
+          </dl>
+          <p class="mt-1 text-right text-sm"><span class="font-semibold text-verde">{{ carrinho.total_pix_centavos|brl }} no Pix</span><br><span class="text-ardosia">ou {{ carrinho.total_centavos|parcelas }}</span></p>
+
+          <a class="btn btn-primario btn-grande btn-bloco mt-6" href="{% url 'pedidos:checkout' %}"><svg class="icone" aria-hidden="true"><use href="#i-cadeado"/></svg>Fechar pedido</a>
+        </div>
+        <p class="mt-3 flex items-center justify-center gap-2 text-xs text-ardosia"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-escudo"/></svg>Compra segura. Não guardamos dados do seu cartão.</p>
+      </aside>
+    </div>
+    {% else %}
+      <div class="painel-suave mx-auto flex max-w-xl flex-col items-center px-6 py-16 text-center">
+        <svg class="icone w-12 h-12 text-turquesa" aria-hidden="true"><use href="#i-sacola"/></svg>
+        <h2 class="mt-4 text-2xl">Sua sacola está vazia</h2>
+        <p class="mt-2 text-ardosia">Que tal escolher uma peça feita à mão para você ou para presentear?</p>
+        <a class="btn btn-primario mt-6" href="{% url 'catalogo:vitrine' %}">Ver as peças</a>
+      </div>
+    {% endif %}
+  {% endpartialdef %}
+  </div>
+</div>
+{% endblock %}

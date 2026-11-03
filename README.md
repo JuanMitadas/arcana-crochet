@@ -38,6 +38,7 @@ pip install -r requirements/dev.txt
 cp .env.example .env             # ajuste DATABASE_URL para o seu Postgres
 python manage.py migrate
 python manage.py createsuperuser
+python manage.py popular_demo    # opcional: peças, pedidos e avaliações de exemplo
 python manage.py runserver
 ```
 
@@ -49,6 +50,8 @@ python manage.py runserver
 | Verificar estilo | `ruff check .` e `ruff format .` |
 | Criar migrações | `python manage.py makemigrations` |
 | Aplicar migrações | `python manage.py migrate` |
+| Dados de exemplo | `python manage.py popular_demo` (cliente: `cliente@arcana.test` / `arcana-demo-123`) |
+| CSS (Tailwind) | `npm install` uma vez, depois `npm run watch:css` ou `npm run build:css` |
 
 Com Docker, prefixe com `docker compose exec web`, por exemplo `docker compose exec web python -m pytest`.
 
@@ -56,13 +59,15 @@ Com Docker, prefixe com `docker compose exec web`, por exemplo `docker compose e
 
 ```
 config/            configurações do Django, URLs e Celery
-apps/core/         base comum: ModeloBase (UUID v7), healthcheck, filtro |brl
-apps/contas/       usuário com login por e-mail, papéis cliente/atendente/admin
-apps/catalogo/     categorias, produtos, variações, fotos e estoque
-templates/         páginas (layout da loja, vitrine, produto, telas de conta)
-static/            CSS
+apps/core/         base comum: ModeloBase (UUID v7), preços (Pix e parcelas), filtros de template
+apps/contas/       usuário com login por e-mail, papéis cliente/atendente/admin, endereços
+apps/catalogo/     categorias, produtos, variações, fotos, ficha técnica, estoque, busca e filtros
+apps/pedidos/      sacola, frete, cupons, checkout, pedidos e acompanhamento
+apps/avaliacoes/   avaliações de quem recebeu a peça, com moderação
+templates/         páginas da loja (home, listagem, produto, sacola, checkout, minha conta)
+static/            Tailwind (src/app.css → css/app.css), JS da loja, fontes e imagens da marca
 docker/            Dockerfile e entrypoint
-docs/              guias de deploy e contas externas
+docs/              guias de frontend, deploy e contas externas
 tests/             testes automatizados (pytest)
 ```
 
@@ -81,9 +86,9 @@ tests/             testes automatizados (pytest)
 
 - [x] **Fundação:** projeto Django, Docker, CI, cadastro e login por e-mail com verificação
 - [x] **Catálogo (base):** modelos de produto, variação, foto e estoque; painel; vitrine e página de produto
-- [ ] **Catálogo (frontend):** Tailwind, design da vitrine, busca e filtros, upload direto para o R2
-- [ ] **Transação:** carrinho, endereço com ViaCEP, cotação no Melhor Envio, Pix e cartão no Asaas, webhooks, etiqueta e rastreio
-- [ ] **Pós-venda:** avaliações, atendimento, trocas e devoluções, relatórios
+- [x] **Frontend da loja:** home, listagem com filtros, produto, sacola, checkout em etapas, acompanhamento do pedido ([docs/frontend.md](docs/frontend.md))
+- [ ] **Transação:** cotação no Melhor Envio, Pix e cartão no Asaas, webhooks, etiqueta, e-mails do pedido, upload direto para o R2
+- [ ] **Pós-venda:** atendimento, trocas e devoluções, relatórios
 - [ ] **Lançamento:** textos legais, teste de segurança, backup testado, beta com clientes
 
-Guias: [deploy no VPS](docs/deploy.md) · [contas externas e formalização](docs/contas-externas.md)
+Guias: [frontend](docs/frontend.md) · [deploy no VPS](docs/deploy.md) · [contas externas e formalização](docs/contas-externas.md)

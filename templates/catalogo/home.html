@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% load static dinheiro loja %}
+
+{% block content %}
+  {% url 'catalogo:vitrine' as url_vitrine %}
+  {# Hero: a primeira coisa que se vê é a peça na mão, contra o céu #}
+  <section class="container-loja pt-6 md:pt-8" aria-labelledby="hero-titulo">
+    <div class="bloco bloco-azul concha-baixo relative px-6 pt-10 pb-12 md:px-14 md:pt-14 md:pb-16">
+      <div class="grid items-center gap-10 md:grid-cols-[1.1fr_1fr]">
+        <div class="relative z-10 max-w-xl">
+          <p class="font-titulo text-xl italic opacity-90">bem-vindos à Arcana</p>
+          <h1 id="hero-titulo" class="mt-2 text-[2.6rem] leading-[1.05] sm:text-6xl lg:text-7xl">Mais do que crochê</h1>
+          <p class="mt-5 max-w-md text-lg opacity-95">Peças feitas à mão com carinho e um toque de magia. Cada ponto é tecido aqui, uma peça por vez.</p>
+          <div class="mt-8 flex flex-wrap items-center gap-4">
+            <a class="btn btn-claro btn-grande" href="{% url 'catalogo:vitrine' %}">Ver as peças</a>
+            <a class="font-semibold underline underline-offset-4 decoration-1 hover:decoration-2" href="#quem-faz">Conheça quem faz</a>
+          </div>
+        </div>
+        <div class="relative mx-auto w-full max-w-[26rem] md:max-w-none">
+          <div class="arco hero-foto aspect-[5/6] border-[6px] border-creme/90">
+            <img src="{% static 'img/site/hero-cestas.webp' %}" alt="Duas mãos erguem cestos de crochê creme com bordas verde e preta contra o céu azul" width="1200" height="779" fetchpriority="high" class="object-[60%_center]">
+          </div>
+          <svg class="icone brilho hero-brilho -top-2 left-2 w-9 h-9" aria-hidden="true"><use href="#i-brilho"/></svg>
+          <svg class="icone brilho hero-brilho top-1/3 -right-3 w-6 h-6" aria-hidden="true"><use href="#i-brilho"/></svg>
+          <svg class="icone brilho hero-brilho bottom-6 -left-4 w-5 h-5" aria-hidden="true"><use href="#i-brilho"/></svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# Banners promocionais #}
+  <section class="container-loja mt-16" aria-label="Destaques da loja">
+    <ul class="grid gap-4 md:grid-cols-3">
+      <li>
+        <a href="{% url 'catalogo:vitrine' %}?promocao=1" class="group relative flex h-full min-h-40 flex-col justify-between overflow-hidden rounded-[var(--radius-cartao)] bg-verde p-6 text-creme no-underline">
+          <div>
+            <h2 class="text-2xl">Ofertas da semana</h2>
+            <p class="mt-1 text-sm opacity-90">Peças selecionadas com preço especial enquanto durarem.</p>
+          </div>
+          <span class="mt-4 font-bold underline decoration-1 underline-offset-4 group-hover:decoration-2">Ver ofertas</span>
+          <svg class="icone brilho -right-3 -bottom-3 w-24 h-24 opacity-15" aria-hidden="true"><use href="#i-brilho"/></svg>
+        </a>
+      </li>
+      <li>
+        <a href="{% url 'catalogo:vitrine' %}?disponibilidade=sob_encomenda" class="group relative flex h-full min-h-40 flex-col justify-between overflow-hidden rounded-[var(--radius-cartao)] bg-turquesa p-6 text-creme no-underline">
+          <div>
+            <h2 class="text-2xl">Do seu jeito</h2>
+            <p class="mt-1 text-sm opacity-90">Peças sob encomenda: você escolhe a cor e a gente tece para você.</p>
+          </div>
+          <span class="mt-4 font-bold underline decoration-1 underline-offset-4 group-hover:decoration-2">Escolher peça</span>
+          <svg class="icone brilho -right-4 -bottom-4 w-24 h-24 opacity-15" aria-hidden="true"><use href="#i-agulha"/></svg>
+        </a>
+      </li>
+      <li>
+        <div class="relative flex h-full min-h-40 flex-col justify-between overflow-hidden rounded-[var(--radius-cartao)] border-2 border-dashed border-turquesa/50 p-6">
+          <div>
+            <h2 class="text-2xl">Frete grátis</h2>
+            <p class="mt-1 text-sm text-ardosia">Em compras a partir de {{ loja.FRETE_GRATIS_A_PARTIR_CENTAVOS|brl }}, para todo o Brasil, no PAC.</p>
+          </div>
+          <p class="mt-4 flex items-center gap-2 text-sm font-semibold text-verde"><svg class="icone" aria-hidden="true"><use href="#i-pix"/></svg>E mais {{ loja.PIX_DESCONTO_PCT }}% de desconto pagando no Pix</p>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  {# Categorias #}
+  {% if categorias_home %}
+  <section class="container-loja mt-20" aria-labelledby="titulo-categorias">
+    <div class="mb-8 text-center">
+      <h2 id="titulo-categorias" class="titulo-secao">Feito devagar, ponto a ponto</h2>
+      <p class="mt-2 text-ardosia">Escolha por onde começar.</p>
+      <svg class="onda mx-auto" aria-hidden="true"><use href="#i-onda"/></svg>
+    </div>
+    <ul class="flex flex-wrap justify-center gap-x-4 gap-y-8 lg:gap-x-6">
+      {% for cat in categorias_home %}
+        <li class="w-[calc(50%-0.5rem)] sm:w-[calc(33.333%-0.75rem)] lg:w-[calc(20%-1.2rem)]">
+          <a href="{% url 'catalogo:categoria' cat.slug %}" class="group flex flex-col items-center gap-3 text-center no-underline">
+            <span class="arco block w-full transition-[border-radius] duration-300 group-hover:rounded-[40%_40%_var(--radius-cartao)_var(--radius-cartao)] {% cycle 'bg-nevoa' 'bg-ceu' 'bg-creme-2' 'bg-nevoa' 'bg-ceu' %}">
+              {% if cat.imagem %}<img src="{{ cat.imagem.url }}" alt="" width="480" height="600" loading="lazy">{% endif %}
+            </span>
+            <span class="font-titulo text-lg font-semibold">{{ cat.nome }}</span>
+            {% if cat.descricao %}<span class="-mt-2 text-sm text-ardosia">{{ cat.descricao }}</span>{% endif %}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if destaques %}
+  <div class="container-loja mt-20">
+    {% include "componentes/carrossel.html" with titulo="Escolhidas pela Kamilly" subtitulo="As peças que mais deram trabalho e mais deram orgulho." produtos=destaques id="destaques" link=url_vitrine %}
+  </div>
+  {% endif %}
+
+  {# Ofertas do dia em bloco colorido, com acabamento de concha em cima e embaixo #}
+  {% if ofertas %}
+  <section class="mt-24" aria-label="Ofertas">
+    <div class="bloco-verde concha-cima concha-baixo py-14 md:py-16">
+      <div class="container-loja vitrine-escura">
+        {% include "componentes/carrossel.html" with titulo="Ofertas do dia" subtitulo="Preço especial em peças prontas para enviar." produtos=ofertas id="ofertas" link=url_vitrine|add:"?promocao=1" %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if novidades %}
+  <div class="container-loja mt-24">
+    {% include "componentes/carrossel.html" with titulo="Acabaram de sair da agulha" produtos=novidades id="novidades" link=url_vitrine|add:"?ordem=novidades" %}
+  </div>
+  {% endif %}
+
+  {% if mais_vendidos %}
+  <div class="container-loja mt-20">
+    {% include "componentes/carrossel.html" with titulo="Mais vendidas" produtos=mais_vendidos id="mais-vendidos" link=url_vitrine|add:"?ordem=mais_vendidos" %}
+  </div>
+  {% endif %}
+
+  {# Quem está por trás #}
+  <section id="quem-faz" class="container-loja mt-24 scroll-mt-32" aria-labelledby="titulo-quem">
+    <div class="grid items-center gap-10 md:grid-cols-[minmax(0,22rem)_1fr] md:gap-16">
+      <div class="relative mx-auto w-full max-w-[20rem] md:max-w-none">
+        <div class="arco bg-nevoa">
+          <img src="{% static 'img/site/kamilly.webp' %}" alt="Kamilly, criadora da Arcana Crochet, sorrindo de óculos" width="719" height="900" loading="lazy">
+        </div>
+        <svg class="icone brilho -top-3 -right-2 w-8 h-8 text-turquesa" aria-hidden="true"><use href="#i-brilho"/></svg>
+      </div>
+      <div class="max-w-xl">
+        <h2 id="titulo-quem" class="titulo-secao">Quem está por trás?</h2>
+        <svg class="onda" aria-hidden="true"><use href="#i-onda"/></svg>
+        <div class="mt-5 space-y-4 text-lg leading-relaxed">
+          <p>Oi! Eu sou a Kamilly. Sempre fui apaixonada por livros, fantasia e por criar coisas com as próprias mãos.</p>
+          <p>O crochê começou como um hobby e, aos poucos, virou uma forma de transformar criatividade em algo que outras pessoas também podem vestir e levar consigo. A Arcana nasceu para unir esses dois mundos: o artesanal e a imaginação.</p>
+          <p>Espero que cada peça faça você se sentir parte dessa história.</p>
+        </div>
+        <a class="btn btn-secundario mt-7" href="{% url 'core:sobre' %}">Conheça a história da Arcana</a>
+      </div>
+    </div>
+  </section>
+
+  {# Significado do nome #}
+  <section class="container-loja mt-24" aria-labelledby="titulo-significado">
+    <div class="relative overflow-hidden rounded-[var(--radius-bloco)] bg-azul px-6 py-12 text-creme md:px-16 md:py-16">
+      <img src="{% static 'img/marca/simbolo-creme.png' %}" alt="" width="360" height="355" loading="lazy" class="pointer-events-none absolute -right-10 -bottom-12 w-64 opacity-10 md:w-80">
+      <div class="relative max-w-2xl">
+        <h2 id="titulo-significado" class="titulo-secao">Por que Arcana?</h2>
+        <p class="mt-5 text-lg leading-relaxed opacity-95">“Arcana” remete ao oculto, ao conhecimento raro e às histórias cheias de simbolismo. Escolhemos esse nome porque acreditamos que o artesanal também guarda um tipo de magia: a de transformar um simples fio em algo único.</p>
+        <p class="mt-5 font-titulo text-2xl italic leading-snug">Cada criação nasce com cuidado, paciência e criatividade, como se cada ponto revelasse um pequeno segredo.</p>
+      </div>
+    </div>
+  </section>
+{% endblock %}

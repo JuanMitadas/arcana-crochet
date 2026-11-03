@@ -83,3 +83,75 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     @property
     def eh_equipe(self) -> bool:
         return self.is_staff
+
+
+class Endereco(models.Model):
+    """Endereço de entrega salvo pelo cliente."""
+
+    UFS = [
+        (uf, uf)
+        for uf in (
+            "AC",
+            "AL",
+            "AM",
+            "AP",
+            "BA",
+            "CE",
+            "DF",
+            "ES",
+            "GO",
+            "MA",
+            "MG",
+            "MS",
+            "MT",
+            "PA",
+            "PB",
+            "PE",
+            "PI",
+            "PR",
+            "RJ",
+            "RN",
+            "RO",
+            "RR",
+            "RS",
+            "SC",
+            "SE",
+            "SP",
+            "TO",
+        )  # fmt: skip
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name="enderecos")
+    apelido = models.CharField(max_length=30, blank=True, help_text="Ex.: Casa, Trabalho.")
+    destinatario = models.CharField("destinatário", max_length=120)
+    telefone = models.CharField(max_length=20)
+    cep = models.CharField("CEP", max_length=8)
+    logradouro = models.CharField("rua", max_length=150)
+    numero = models.CharField("número", max_length=20)
+    complemento = models.CharField(max_length=80, blank=True)
+    bairro = models.CharField(max_length=80)
+    cidade = models.CharField(max_length=80)
+    uf = models.CharField("UF", max_length=2, choices=UFS)
+    padrao = models.BooleanField("endereço principal", default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "endereço"
+        verbose_name_plural = "endereços"
+        ordering = ["-padrao", "-criado_em"]
+
+    def __str__(self):
+        return f"{self.logradouro}, {self.numero} · {self.cidade}/{self.uf}"
+
+    @property
+    def cep_formatado(self) -> str:
+        return f"{self.cep[:5]}-{self.cep[5:]}" if len(self.cep) == 8 else self.cep
+
+    def como_dict(self) -> dict:
+        """Cópia congelada no pedido: mudar o endereço depois não altera pedidos antigos."""
+        campos = [
+            "destinatario", "telefone", "cep", "logradouro", "numero",
+            "complemento", "bairro", "cidade", "uf",
+        ]  # fmt: skip
+        return {campo: getattr(self, campo) for campo in campos}

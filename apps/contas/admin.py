@@ -2,11 +2,17 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
 from .forms import UsuarioAlteracaoForm, UsuarioCriacaoForm
-from .models import Usuario
+from .models import Endereco, Usuario
+
+
+class EnderecoInline(admin.StackedInline):
+    model = Endereco
+    extra = 0
 
 
 @admin.register(Usuario)
 class UsuarioAdmin(UserAdmin):
+    inlines = [EnderecoInline]
     form = UsuarioAlteracaoForm
     add_form = UsuarioCriacaoForm
     ordering = ["-date_joined"]

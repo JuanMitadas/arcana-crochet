@@ -1,7 +1,8 @@
 import pytest
 
-from apps.catalogo.models import Categoria, Produto, ProdutoVariacao
-from apps.contas.models import Usuario
+from apps.catalogo.estoque import registrar_movimentacao
+from apps.catalogo.models import Categoria, MovimentacaoEstoque, Produto, ProdutoVariacao
+from apps.contas.models import Endereco, Usuario
 
 
 @pytest.fixture
@@ -42,3 +43,42 @@ def variacao(produto):
 @pytest.fixture
 def admin_usuario(db):
     return Usuario.objects.create_superuser("admin@arcana.test", "senha-forte-123")
+
+
+@pytest.fixture
+def com_estoque():
+    """Dá entrada de ``quantidade`` unidades numa variação."""
+
+    def _entrada(variacao, quantidade):
+        registrar_movimentacao(variacao, MovimentacaoEstoque.Tipo.ENTRADA_PRODUCAO, quantidade)
+        variacao.refresh_from_db()
+        return variacao
+
+    return _entrada
+
+
+@pytest.fixture
+def cliente(db):
+    from allauth.account.models import EmailAddress
+
+    usuario = Usuario.objects.create_user(
+        "cliente@teste.com", "senha-forte-123", nome_completo="Marina Alves"
+    )
+    EmailAddress.objects.create(user=usuario, email=usuario.email, verified=True, primary=True)
+    return usuario
+
+
+@pytest.fixture
+def endereco(cliente):
+    return Endereco.objects.create(
+        usuario=cliente,
+        destinatario="Marina Alves",
+        telefone="11987654321",
+        cep="01310100",
+        logradouro="Avenida Paulista",
+        numero="1000",
+        bairro="Bela Vista",
+        cidade="São Paulo",
+        uf="SP",
+        padrao=True,
+    )

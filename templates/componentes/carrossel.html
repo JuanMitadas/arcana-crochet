@@ -1,0 +1,21 @@
+{# Uso: {% include "componentes/carrossel.html" with titulo="..." produtos=lista id="destaques" link=url %} #}
+<section class="carrossel" aria-labelledby="titulo-{{ id }}" data-carrossel>
+  <div class="mb-6 flex items-end justify-between gap-4">
+    <div>
+      <h2 id="titulo-{{ id }}" class="titulo-secao">{{ titulo }}</h2>
+      {% if subtitulo %}<p class="subtitulo-secao mt-1">{{ subtitulo }}</p>{% endif %}
+      <svg class="onda" aria-hidden="true"><use href="#i-onda"/></svg>
+    </div>
+    <div class="flex items-center gap-4">
+      {% if link %}<a class="link hidden sm:inline whitespace-nowrap" href="{{ link }}">Ver todas</a>{% endif %}
+      <div class="carrossel__botoes">
+        <button type="button" class="btn-redondo" data-anterior aria-label="Anteriores"><svg class="icone" aria-hidden="true"><use href="#i-esquerda"/></svg></button>
+        <button type="button" class="btn-redondo" data-proximo aria-label="Próximos"><svg class="icone" aria-hidden="true"><use href="#i-direita"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <ul class="carrossel__trilho" data-trilho>
+    {% for produto in produtos %}<li>{% include "componentes/card_produto.html" %}</li>{% endfor %}
+  </ul>
+  {% if link %}<a class="link mt-2 inline-block sm:hidden" href="{{ link }}">Ver todas</a>{% endif %}
+</section>

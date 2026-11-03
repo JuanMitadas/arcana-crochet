@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load static dinheiro loja %}
+
+{% block head_title %}Finalizar compra | Arcana Crochet{% endblock %}
+
+{% block cabecalho %}
+<header class="topo">
+  <div class="container-loja flex items-center justify-between py-4">
+    <a href="{% url 'catalogo:home' %}" aria-label="Voltar à loja"><img src="{% static 'img/marca/nome-azul.png' %}" alt="Arcana Crochet" width="150" height="44" class="h-10 w-auto"></a>
+    <p class="flex items-center gap-2 text-sm font-semibold text-verde"><svg class="icone" aria-hidden="true"><use href="#i-cadeado"/></svg>Compra segura</p>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container-loja pt-8">
+  <ol class="etapas mx-auto max-w-2xl" aria-label="Etapas da compra">
+    {% for e in etapas %}
+      <li class="etapa {% if e.feita %}etapa--feita{% elif e.atual %}etapa--atual{% endif %}" {% if e.atual %}aria-current="step"{% endif %}>
+        <span class="etapa__marca">{% if e.feita %}<svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-check"/></svg>{% else %}{{ e.numero }}{% endif %}</span>
+        {% if e.feita and e.chave != "identificacao" %}<a href="{% url 'pedidos:checkout_'|add:e.chave %}">{{ e.nome }}</a>{% else %}{{ e.nome }}{% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+
+  <div class="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-12">
+    <div>{% block etapa %}{% endblock %}</div>
+    <aside class="self-start lg:sticky lg:top-8" aria-labelledby="titulo-resumo-checkout">
+      <details class="painel p-5" open data-resumo-checkout>
+        <summary class="flex cursor-pointer list-none items-center justify-between">
+          <h2 id="titulo-resumo-checkout" class="text-xl">Seu pedido</h2>
+          <span class="font-bold numeros-tabulares">{{ carrinho.total_centavos|brl }}</span>
+        </summary>
+        <ul class="mt-4 flex flex-col gap-3">
+          {% for item in carrinho.itens %}
+            <li class="grid grid-cols-[3.25rem_1fr_auto] items-center gap-3 text-sm">
+              <span class="arco block !aspect-[4/5]">{% if item.foto %}<img src="{{ item.foto.imagem.url }}" alt="" width="52" height="65" loading="lazy">{% endif %}</span>
+              <span><strong class="font-semibold">{{ item.produto.nome }}</strong>{% if item.detalhes %}<br><span class="text-ardosia">{{ item.detalhes }}</span>{% endif %}<br><span class="text-ardosia">Qtd. {{ item.quantidade }}</span></span>
+              <span class="numeros-tabulares">{{ item.total_centavos|brl }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+        <dl class="mt-5 flex flex-col gap-1.5 border-t border-creme-3 pt-4 text-sm">
+          <div class="flex justify-between"><dt>Produtos</dt><dd class="numeros-tabulares">{{ carrinho.subtotal_centavos|brl }}</dd></div>
+          {% if carrinho.desconto_cupom_centavos %}<div class="flex justify-between text-verde"><dt>Cupom {{ carrinho.cupom_valido.codigo }}</dt><dd>−{{ carrinho.desconto_cupom_centavos|brl }}</dd></div>{% endif %}
+          <div class="flex justify-between"><dt>Frete{% if carrinho.frete %} ({{ carrinho.frete.nome }}){% endif %}</dt><dd class="numeros-tabulares">{% if carrinho.frete %}{% if carrinho.frete.gratis %}Grátis{% else %}{{ carrinho.frete_centavos|brl }}{% endif %}{% else %}a calcular{% endif %}</dd></div>
+          {% if metodo == "pix" and etapa == "revisao" %}<div class="flex justify-between text-verde"><dt>Desconto Pix</dt><dd>−{{ carrinho.desconto_pix_centavos|brl }}</dd></div>{% endif %}
+          <div class="mt-2 flex items-baseline justify-between border-t border-creme-3 pt-3"><dt class="font-bold">Total</dt><dd class="font-titulo text-2xl font-bold numeros-tabulares">{% if metodo == "pix" and etapa == "revisao" %}{{ carrinho.total_pix_centavos|brl }}{% else %}{{ carrinho.total_centavos|brl }}{% endif %}</dd></div>
+        </dl>
+        <a class="link mt-4 inline-block text-sm" href="{% url 'pedidos:sacola' %}">Editar sacola</a>
+      </details>
+    </aside>
+  </div>
+</div>
+{% endblock %}
+
+{% block rodape %}
+<footer class="mt-20 border-t border-creme-3 py-6">
+  <p class="container-loja flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-center text-xs text-ardosia">
+    <span class="inline-flex items-center gap-1.5"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-cadeado"/></svg>Conexão segura (HTTPS)</span>
+    <span class="inline-flex items-center gap-1.5"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-escudo"/></svg>Pagamento processado pelo Asaas</span>
+    <a class="underline" href="{% url 'core:trocas' %}">Trocas e devoluções</a>
+  </p>
+</footer>
+{% endblock %}

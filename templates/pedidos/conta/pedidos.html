@@ -1,0 +1,48 @@
+{% extends "pedidos/conta/base.html" %}
+{% load dinheiro loja %}
+
+{% block conta %}
+<h1 class="text-4xl">Meus pedidos</h1>
+<ul class="mt-5 flex flex-wrap gap-2" aria-label="Filtrar pedidos">
+  <li><a class="chip pr-3 {% if not filtro %}!bg-turquesa !text-creme{% endif %}" href="?" {% if not filtro %}aria-current="page"{% endif %}>Todos</a></li>
+  <li><a class="chip pr-3 {% if filtro == 'andamento' %}!bg-turquesa !text-creme{% endif %}" href="?status=andamento">Em andamento</a></li>
+  <li><a class="chip pr-3 {% if filtro == 'entregue' %}!bg-turquesa !text-creme{% endif %}" href="?status=entregue">Entregues</a></li>
+  <li><a class="chip pr-3 {% if filtro == 'cancelado' %}!bg-turquesa !text-creme{% endif %}" href="?status=cancelado">Cancelados</a></li>
+</ul>
+
+{% if pedidos %}
+  <ul class="mt-6 flex flex-col gap-4">
+    {% for pedido in pedidos %}
+      <li class="painel relative p-5">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 class="font-sans text-lg font-bold"><a class="no-underline after:absolute after:inset-0" href="{{ pedido.get_absolute_url }}">Pedido {{ pedido.codigo }}</a></h2>
+            <p class="text-sm text-ardosia">Feito em {{ pedido.criado_em|date:"d/m/Y" }}, {{ pedido.itens.all|length }} ite{{ pedido.itens.all|length|pluralize:"m,ns" }}</p>
+          </div>
+          {% include "componentes/status_pedido.html" %}
+        </div>
+        <div class="mt-4 flex flex-wrap items-end justify-between gap-4">
+          <ul class="flex -space-x-3" aria-hidden="true">
+            {% for item in pedido.itens.all|slice:":4" %}
+              {% with foto=item.produto|foto_principal %}
+                <li class="h-14 w-14 overflow-hidden rounded-full border-2 border-[#fffef6] bg-nevoa">{% if foto %}<img src="{{ foto.imagem.url }}" alt="" width="56" height="56" class="h-full w-full object-cover" loading="lazy">{% endif %}</li>
+              {% endwith %}
+            {% endfor %}
+          </ul>
+          <div class="text-right">
+            <p class="font-bold numeros-tabulares">{{ pedido.total_centavos|brl }}</p>
+            {% if pedido.status == "enviado" %}<p class="text-sm text-verde font-semibold">A caminho: {{ pedido.codigo_rastreio }}</p>
+            {% elif pedido.status == "aguardando_pagamento" %}<p class="text-sm text-azul font-semibold">Falta pagar</p>{% endif %}
+          </div>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="painel-suave mt-6 px-6 py-14 text-center">
+    <svg class="icone mx-auto w-10 h-10 text-turquesa" aria-hidden="true"><use href="#i-pacote"/></svg>
+    <p class="mt-3 font-titulo text-xl">{% if filtro %}Nenhum pedido aqui.{% else %}Você ainda não fez nenhum pedido.{% endif %}</p>
+    <a class="btn btn-primario mt-6" href="{% url 'catalogo:vitrine' %}">Ver as peças</a>
+  </div>
+{% endif %}
+{% endblock %}

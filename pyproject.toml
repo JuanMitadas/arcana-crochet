@@ -15,6 +15,9 @@ ignore = ["S101"]  # assert é usado nos testes
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106"]
+# Dados e imagens de demonstração: aleatoriedade não criptográfica e textos longos
+"apps/catalogo/demo_imagens.py" = ["S311"]
+"apps/catalogo/management/commands/popular_demo.py" = ["S311", "S105", "E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["apps", "config"]

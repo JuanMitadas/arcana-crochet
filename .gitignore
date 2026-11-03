@@ -26,3 +26,6 @@ certs/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Frontend (o CSS compilado em static/css é versionado)
+node_modules/

@@ -1,0 +1,15 @@
+{% load dinheiro loja %}
+{% if erro %}
+  <p class="mt-3 text-sm font-semibold text-alerta">{{ erro }}</p>
+{% else %}
+  <p class="mt-3 text-xs text-ardosia">Para {{ cep|cep }}, {{ regiao }}:</p>
+  <ul class="mt-2 flex flex-col gap-2">
+    {% for opcao in opcoes %}
+      <li class="flex items-center justify-between gap-4 rounded-xl bg-creme px-4 py-3 text-sm">
+        <span><strong>{{ opcao.nome }}</strong><br><span class="text-ardosia">chega em até {{ opcao.descricao_prazo }}{% if sob_encomenda %}, contando a produção{% endif %}</span></span>
+        <span class="font-bold numeros-tabulares {% if opcao.gratis %}text-verde{% endif %}">{% if opcao.gratis %}Grátis{% else %}{{ opcao.preco_centavos|brl }}{% endif %}</span>
+      </li>
+    {% endfor %}
+  </ul>
+  <p class="mt-2 text-xs text-ardosia">Valores estimados; o frete final é confirmado no fechamento do pedido.</p>
+{% endif %}

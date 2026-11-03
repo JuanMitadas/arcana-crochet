@@ -1,0 +1,43 @@
+{% extends "pedidos/conta/base.html" %}
+{% load loja %}
+
+{% block conta %}
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-4xl">Endereços</h1>
+  {% if not mostrar_form %}<a class="btn btn-secundario" href="?novo=1"><svg class="icone" aria-hidden="true"><use href="#i-mais"/></svg>Novo endereço</a>{% endif %}
+</div>
+
+{% if mostrar_form %}
+  <form method="post" class="painel mt-6 p-5 md:p-6" novalidate>
+    {% csrf_token %}
+    <h2 class="mb-5 text-2xl">Novo endereço</h2>
+    {% include "componentes/form_endereco.html" %}
+    <div class="mt-6 flex flex-wrap gap-3">
+      <button type="submit" class="btn btn-primario">Salvar endereço</button>
+      <a class="btn" href="{% url 'pedidos:enderecos' %}">Cancelar</a>
+    </div>
+  </form>
+{% endif %}
+
+{% if enderecos %}
+  <ul class="mt-6 grid gap-4 md:grid-cols-2">
+    {% for e in enderecos %}
+      <li class="painel flex flex-col p-5">
+        <p class="flex items-center gap-2 font-bold"><svg class="icone text-turquesa" aria-hidden="true"><use href="#i-localizacao"/></svg>{{ e.apelido|default:e.destinatario }}{% if e.padrao %}<span class="etiqueta etiqueta--turquesa">principal</span>{% endif %}</p>
+        <p class="mt-2 flex-1 text-sm leading-relaxed">{{ e.logradouro }}, {{ e.numero }}{% if e.complemento %} ({{ e.complemento }}){% endif %}<br>{{ e.bairro }}, {{ e.cidade }}/{{ e.uf }}<br>CEP {{ e.cep|cep }}<br><span class="text-ardosia">{{ e.destinatario }}, {{ e.telefone|telefone }}</span></p>
+        <form method="post" class="mt-4 flex gap-4 text-sm">
+          {% csrf_token %}<input type="hidden" name="id" value="{{ e.pk }}">
+          {% if not e.padrao %}<button class="link" name="acao" value="principal">Tornar principal</button>{% endif %}
+          <button class="link !text-alerta" name="acao" value="remover">Remover</button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+{% elif not mostrar_form %}
+  <div class="painel-suave mt-6 px-6 py-12 text-center">
+    <p class="font-titulo text-xl">Nenhum endereço salvo ainda.</p>
+    <p class="mt-1 text-sm text-ardosia">Salve um endereço e a próxima compra fica mais rápida.</p>
+    <a class="btn btn-primario mt-5" href="?novo=1">Adicionar endereço</a>
+  </div>
+{% endif %}
+{% endblock %}

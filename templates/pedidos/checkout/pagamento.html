@@ -1,0 +1,44 @@
+{% extends "pedidos/checkout/base.html" %}
+{% load dinheiro loja %}
+
+{% block etapa %}
+<h1 class="text-3xl md:text-4xl">Como você prefere pagar?</h1>
+
+<form method="post" class="mt-8 flex flex-col gap-4">
+  {% csrf_token %}
+  <fieldset class="flex flex-col gap-3">
+    <legend class="sr-only">Forma de pagamento</legend>
+
+    <label class="escolha flex-wrap">
+      <input type="radio" name="metodo" value="pix" {% if metodo == "pix" %}checked{% endif %}>
+      <span class="flex-1">
+        <span class="flex items-center gap-2 text-lg font-bold"><svg class="icone text-turquesa" aria-hidden="true"><use href="#i-pix"/></svg>Pix</span>
+        <span class="text-sm text-ardosia">{{ loja.PIX_DESCONTO_PCT }}% de desconto nos produtos. Aprovação na hora.</span>
+      </span>
+      <span class="text-right"><strong class="font-titulo text-2xl numeros-tabulares">{{ carrinho.total_pix_centavos|brl }}</strong><br><span class="text-xs text-verde font-semibold">economia de {{ carrinho.desconto_pix_centavos|brl }}</span></span>
+      <span class="escolha__extra w-full pl-8 text-sm text-ardosia">Depois de confirmar, mostramos o QR Code e o código copia e cola. O Pix vale por 30 minutos.</span>
+    </label>
+
+    <label class="escolha flex-wrap">
+      <input type="radio" name="metodo" value="cartao" {% if metodo == "cartao" %}checked{% endif %}>
+      <span class="flex-1">
+        <span class="flex items-center gap-2 text-lg font-bold"><svg class="icone text-turquesa" aria-hidden="true"><use href="#i-cartao"/></svg>Cartão de crédito</span>
+        <span class="text-sm text-ardosia">Em até {{ opcoes_parcelas|length }}x sem juros.</span>
+      </span>
+      <span class="text-right"><strong class="font-titulo text-2xl numeros-tabulares">{{ carrinho.total_centavos|brl }}</strong></span>
+      <span class="escolha__extra w-full pl-8">
+        <span id="rotulo-parcelas" class="mb-1 block text-sm font-semibold">Parcelas</span>
+        <select id="parcelas" name="parcelas" class="sm:!w-80" aria-labelledby="rotulo-parcelas">
+          {% for opcao in opcoes_parcelas %}<option value="{{ opcao.vezes }}" {% if opcao.vezes == parcelas %}selected{% endif %}>{{ opcao.vezes }}x de {{ opcao.valor_parcela_centavos|brl }} sem juros</option>{% endfor %}
+        </select>
+        <span class="mt-2 flex items-center gap-1.5 text-xs text-ardosia"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-cadeado"/></svg>Os dados do cartão são digitados no ambiente seguro do Asaas. A Arcana nunca vê nem guarda o número.</span>
+      </span>
+    </label>
+  </fieldset>
+
+  <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
+    <a class="link" href="{% url 'pedidos:checkout_entrega' %}">Voltar para a entrega</a>
+    <button type="submit" class="btn btn-primario btn-grande">Revisar pedido</button>
+  </div>
+</form>
+{% endblock %}

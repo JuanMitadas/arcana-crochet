@@ -13,3 +13,4 @@ certs
 .env.*
 docs
 tests
+node_modules
