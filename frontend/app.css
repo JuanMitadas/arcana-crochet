@@ -1,18 +1,18 @@
 /*
-  Arcana Crochet — folha de estilos da loja (Tailwind CSS v4).
-  Compile com:  npm run build:css   (ou npm run watch:css durante o desenvolvimento)
+  Arcana Crochet — store stylesheet (Tailwind CSS v4).
+  Build with:  npm run build:css   (or npm run watch:css while developing)
 
-  Assinatura visual:
-  - "Ponto concha": borda recortada em arcos, como o acabamento do crochê (.concha-*)
-  - "Portal": fotos em arco, como uma passagem para outro mundo (.arco)
-  - A onda do "crochet" do logo como divisor (#i-onda)
+  Visual signature:
+  - "Shell stitch": edges cut into arcs, like a crochet border (.concha-*)
+  - "Portal": photos in an arch, like a doorway to another world (.arco)
+  - The wave under "crochet" in the logo as a divider (#i-onda)
 */
 @import "tailwindcss";
 @source "../templates";
 @source "../apps";
 @source "../static/js";
 
-/* --- Fontes auto-hospedadas (a CSP só permite font-src 'self') ---------- */
+/* --- Self-hosted fonts (the CSP only allows font-src 'self') ----------- */
 @font-face {
   font-family: "Fraunces";
   src: url("../fonts/fraunces.woff2") format("woff2");
@@ -46,7 +46,7 @@
   --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
   --font-titulo: "Fraunces", ui-serif, Georgia, serif;
 
-  /* Paleta da marca */
+  /* Brand palette */
   --color-creme: #fbf9e4;
   --color-creme-2: #f4f0d6;
   --color-creme-3: #e6e0bf;
@@ -56,7 +56,7 @@
   --color-verde: #015d5c;
   --color-turquesa: #2e7f83;
   --color-ardosia: #195261;
-  /* Tons claros derivados, para fundos de foto e estados */
+  /* Lighter derived tones, for photo backgrounds and states */
   --color-nevoa: #dde9e6;
   --color-ceu: #dbe7ee;
   --color-alerta: #8a3b12;
@@ -133,7 +133,7 @@
     display: none !important;
   }
 
-  /* Campos de formulário: valem também para as telas de conta do allauth */
+  /* Form fields: also used by the allauth account pages */
   input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="submit"]),
   select,
   textarea {
@@ -174,7 +174,7 @@
   }
 }
 
-/* --- Componentes -------------------------------------------------------- */
+/* --- Components --------------------------------------------------------- */
 @layer components {
   .container-loja {
     width: 100%;
@@ -217,7 +217,7 @@
     stroke: none;
   }
 
-  /* Botões */
+  /* Buttons */
   .btn {
     display: inline-flex;
     align-items: center;
@@ -290,7 +290,7 @@
     text-decoration-thickness: 2px;
   }
 
-  /* Ponto concha: borda inferior/superior em arcos */
+  /* Shell stitch: bottom/top edge in arcs */
   .concha-baixo,
   .concha-cima {
     position: relative;
@@ -321,7 +321,7 @@
     transform: scaleY(-1);
   }
 
-  /* Portal: foto em arco */
+  /* Portal: photo in an arch */
   .arco {
     border-radius: 999px 999px var(--radius-cartao) var(--radius-cartao);
     overflow: hidden;
@@ -335,7 +335,7 @@
     object-fit: cover;
   }
 
-  /* Títulos de seção com a onda do logo */
+  /* Section titles with the logo's wave */
   .titulo-secao {
     font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.4rem);
   }
@@ -353,14 +353,14 @@
     margin-top: 0.5rem;
   }
 
-  /* Faixa de vantagens */
+  /* Perks bar */
   .faixa {
     background: var(--color-petroleo);
     color: var(--color-creme);
     font-size: var(--text-mini);
   }
 
-  /* Cabeçalho */
+  /* Header */
   .topo {
     background: var(--color-creme);
     border-bottom: 1px solid var(--color-creme-3);
@@ -421,7 +421,7 @@
     line-height: 1;
   }
 
-  /* Menu de categorias */
+  /* Category menu */
   .menu-cat > ul {
     display: flex;
     gap: 0.25rem;
@@ -474,7 +474,7 @@
     background: var(--color-creme-2);
   }
 
-  /* Card de produto */
+  /* Product card */
   .card-produto {
     position: relative;
     display: flex;
@@ -495,7 +495,7 @@
     text-decoration: none;
   }
   .card-produto__nome::after {
-    /* deixa o card inteiro clicável sem aninhar links */
+    /* makes the whole card clickable without nesting links */
     content: "";
     position: absolute;
     inset: 0;
@@ -511,7 +511,7 @@
     pointer-events: none;
   }
 
-  /* Selo de desconto em forma de estrela de quatro pontas, como as do logo */
+  /* Discount badge shaped like a four-pointed star, like the ones in the logo */
   .selo-desconto {
     width: 3.4rem;
     height: 3.4rem;
@@ -571,7 +571,7 @@
     color: var(--color-alerta);
   }
 
-  /* Preços */
+  /* Prices */
   .preco-de {
     color: color-mix(in oklab, var(--color-ardosia) 70%, transparent);
     text-decoration: line-through;
@@ -593,7 +593,7 @@
     color: var(--color-ardosia);
   }
 
-  /* Estrelas */
+  /* Stars */
   .estrelas {
     display: inline-flex;
     align-items: center;
@@ -613,7 +613,7 @@
     height: 1.6rem;
   }
 
-  /* Carrossel com rolagem nativa e botões */
+  /* Carousel with native scrolling and buttons */
   .carrossel {
     position: relative;
   }
@@ -676,7 +676,7 @@
     border-color: currentColor;
   }
 
-  /* Blocos coloridos (hero, faixas de ofertas) */
+  /* Colored blocks (hero, deal strips) */
   .bloco {
     border-radius: var(--radius-bloco) var(--radius-bloco) 0 0;
   }
@@ -705,7 +705,7 @@
     --cor-concha: var(--color-creme-2);
   }
 
-  /* Cards dentro de blocos escuros ganham um fundo creme */
+  /* Cards inside dark blocks get a cream background */
   .vitrine-escura .card-produto {
     background: var(--color-creme);
     color: var(--color-petroleo);
@@ -740,7 +740,7 @@
     scrollbar-color: rgb(251 249 228 / 0.35) transparent;
   }
 
-  /* Brilhos decorativos (estrelas do logo) */
+  /* Decorative sparkles (stars from the logo) */
   .brilho {
     position: absolute;
     color: currentColor;
@@ -748,7 +748,7 @@
     pointer-events: none;
   }
 
-  /* Painéis e cartões genéricos */
+  /* Generic panels and boxes */
   .painel {
     background: #fffef6;
     border: 1px solid var(--color-creme-3);
@@ -759,7 +759,7 @@
     border-radius: var(--radius-cartao);
   }
 
-  /* Migalhas */
+  /* Breadcrumbs */
   .migalhas ol {
     display: flex;
     flex-wrap: wrap;
@@ -779,7 +779,7 @@
     text-decoration: underline;
   }
 
-  /* Filtros */
+  /* Filters */
   .filtro + .filtro {
     border-top: 1px solid var(--color-creme-3);
   }
@@ -844,7 +844,7 @@
     height: 0.95rem;
   }
 
-  /* Paginação */
+  /* Pagination */
   .paginacao {
     display: flex;
     justify-content: center;
@@ -870,7 +870,7 @@
     color: var(--color-creme);
   }
 
-  /* Galeria do produto */
+  /* Product gallery */
   .galeria__principal {
     position: relative;
     border-radius: 999px 999px var(--radius-bloco) var(--radius-bloco);
@@ -914,7 +914,7 @@
     object-fit: cover;
   }
 
-  /* Seletor de variação */
+  /* Variation picker */
   .amostra {
     position: relative;
     display: inline-flex;
@@ -955,7 +955,7 @@
     cursor: not-allowed;
   }
 
-  /* Seletor de quantidade */
+  /* Quantity picker */
   .quantidade {
     display: inline-flex;
     align-items: center;
@@ -994,7 +994,7 @@
     -webkit-appearance: none;
   }
 
-  /* Ficha técnica */
+  /* Spec sheet */
   .ficha {
     width: 100%;
     border-collapse: collapse;
@@ -1021,7 +1021,7 @@
     border-radius: 0 0.75rem 0.75rem 0;
   }
 
-  /* Barras (distribuição de notas, frete grátis) */
+  /* Bars (rating distribution, free shipping) */
   .barra {
     -webkit-appearance: none;
     appearance: none;
@@ -1045,7 +1045,7 @@
     border-radius: 999px;
   }
 
-  /* Etapas (checkout e acompanhamento do pedido) */
+  /* Steps (checkout and order tracking) */
   .etapas {
     display: grid;
     grid-auto-flow: column;
@@ -1064,7 +1064,7 @@
     color: color-mix(in oklab, var(--color-ardosia) 70%, transparent);
   }
   .etapa::before {
-    /* linha entre as etapas */
+    /* line between the steps */
     content: "";
     position: absolute;
     top: 1.125rem;
@@ -1113,7 +1113,7 @@
     text-decoration: none;
   }
 
-  /* Opção grande selecionável (endereço, frete, pagamento) */
+  /* Large selectable option (address, shipping, payment) */
   .escolha {
     position: relative;
     display: flex;
@@ -1143,7 +1143,7 @@
     display: block;
   }
 
-  /* Avaliação por estrelas (formulário) */
+  /* Star rating (form) */
   .nota-input {
     display: inline-flex;
     flex-direction: row-reverse;
@@ -1175,7 +1175,7 @@
     border-radius: 0.5rem;
   }
 
-  /* Mensagens */
+  /* Messages */
   .mensagem {
     display: flex;
     gap: 0.6rem;
@@ -1197,7 +1197,7 @@
     color: var(--color-azul);
   }
 
-  /* Campos montados pelos templates da loja */
+  /* Fields rendered by the store's templates */
   .campo {
     display: flex;
     flex-direction: column;
@@ -1215,7 +1215,7 @@
     font-size: var(--text-micro);
   }
 
-  /* Rodapé */
+  /* Footer */
   .rodape {
     background: var(--color-petroleo);
     color: var(--color-creme);
@@ -1240,7 +1240,7 @@
     font-weight: 600;
   }
 
-  /* Telas de conta do allauth: o conteúdo vem sem classes, então estilizamos o contêiner */
+  /* allauth account pages: the markup has no classes, so the container is styled */
   .conta-allauth {
     max-width: 30rem;
     margin-inline: auto;
@@ -1293,7 +1293,7 @@
     gap: 0.5rem;
   }
 
-  /* Texto corrido (sobre, trocas, descrição do produto) */
+  /* Running text (about, returns, product description) */
   .prosa {
     max-width: 68ch;
   }
@@ -1315,7 +1315,7 @@
   }
 }
 
-/* --- Utilitários próprios ---------------------------------------------- */
+/* --- Custom utilities ---------------------------------------------------- */
 @utility numeros-tabulares {
   font-variant-numeric: tabular-nums;
 }
@@ -1326,7 +1326,7 @@
   }
 }
 
-/* Entrada do hero: o único movimento automático da página */
+/* Hero entrance: the page's only automatic motion */
 @keyframes surgir {
   from {
     opacity: 0;

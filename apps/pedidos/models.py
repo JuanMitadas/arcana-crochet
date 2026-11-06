@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from apps.core.models import ModeloBase
 
-ALFABETO_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # sem 0/O e 1/I para ditar por telefone
+ALFABETO_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O or 1/I (read out by phone)
 
 
 def gerar_codigo_pedido() -> str:
@@ -51,7 +51,7 @@ class Cupom(ModeloBase):
         super().save(*args, **kwargs)
 
     def validar(self, subtotal_centavos: int) -> None:
-        """Levanta ValidationError com uma mensagem para o cliente se não puder ser usado."""
+        """Raise ValidationError with a message for the customer if it can't be used."""
         if not self.ativo or (self.valido_ate and self.valido_ate < timezone.now()):
             raise ValidationError("Este cupom expirou.")
         if self.limite_usos is not None and self.usos >= self.limite_usos:
@@ -94,7 +94,7 @@ class Pedido(ModeloBase):
         PIX = "pix", "Pix"
         CARTAO = "cartao", "Cartão de crédito"
 
-    # Etapas mostradas na linha do tempo do cliente, na ordem.
+    # Steps shown on the customer's timeline, in order.
     ETAPAS = [Status.PAGO, Status.EM_SEPARACAO, Status.ENVIADO, Status.ENTREGUE]
     STATUS_PAGOS = [Status.PAGO, Status.EM_SEPARACAO, Status.ENVIADO, Status.ENTREGUE]
     PROXIMO = {
@@ -140,7 +140,8 @@ class Pedido(ModeloBase):
         verbose_name = "pedido"
         verbose_name_plural = "pedidos"
         ordering = ["-criado_em"]
-        indexes = [models.Index(fields=["cliente", "-criado_em"])]
+        # DSQL indexes have no sort direction; the index is read backwards for "-criado_em".
+        indexes = [models.Index(fields=["cliente", "criado_em"])]
         constraints = [
             models.CheckConstraint(condition=Q(total_centavos__gte=0), name="pedido_total_valido"),
             models.CheckConstraint(
@@ -164,7 +165,7 @@ class Pedido(ModeloBase):
         }
 
     def linha_do_tempo(self) -> list[dict]:
-        """Etapas para o painel do cliente: concluída, atual ou pendente."""
+        """Steps for the customer's page: done, current or pending."""
         datas = self.data_do_status
         atual = self.ETAPAS.index(self.status) if self.status in self.ETAPAS else -1
         etapas = []
@@ -197,7 +198,7 @@ class Pedido(ModeloBase):
 
 
 class PedidoItem(models.Model):
-    """Cópia do produto no momento da compra: preço e nome não mudam depois."""
+    """Copy of the product at purchase time: price and name don't change afterwards."""
 
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name="itens")
     produto = models.ForeignKey(

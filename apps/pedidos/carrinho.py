@@ -1,4 +1,4 @@
-"""Sacola de compras guardada na sessão (funciona para visitantes e clientes logados)."""
+"""Shopping bag stored in the session (works for visitors and logged-in customers)."""
 
 from dataclasses import dataclass
 from functools import cached_property
@@ -60,7 +60,7 @@ class Carrinho:
         self.cep: str = dados.get("cep", "")
         self.frete_codigo: str = dados.get("frete", "")
 
-    # --- persistência -------------------------------------------------------
+    # --- persistence ---------------------------------------------------------
 
     def salvar(self):
         self.session[CHAVE] = {
@@ -77,7 +77,7 @@ class Carrinho:
         self.session.pop(CHAVE, None)
         self.session.modified = True
 
-    # --- itens --------------------------------------------------------------
+    # --- items --------------------------------------------------------------
 
     @property
     def quantidade_total(self) -> int:
@@ -87,7 +87,7 @@ class Carrinho:
         return self.quantidade_total
 
     def adicionar(self, variacao: ProdutoVariacao, quantidade: int = 1) -> int:
-        """Soma à quantidade atual respeitando o disponível. Devolve a quantidade final."""
+        """Add to the current quantity within what's available. Return the final quantity."""
         chave = str(variacao.pk)
         return self.definir(variacao, self._itens.get(chave, 0) + quantidade)
 
@@ -146,9 +146,9 @@ class Carrinho:
             self.session.modified = True
         return itens
 
-    ajustado = False  # True quando algum item foi reduzido ou removido por falta de estoque
+    ajustado = False  # True when an item was reduced or removed for lack of stock
 
-    # --- valores ------------------------------------------------------------
+    # --- amounts ------------------------------------------------------------
 
     @property
     def subtotal_centavos(self) -> int:

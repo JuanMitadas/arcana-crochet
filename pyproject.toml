@@ -1,21 +1,21 @@
 [project]
 name = "arcana-crochet"
 version = "0.1.0"
-description = "Loja virtual da Arcana Crochet"
+description = "Arcana Crochet online store"
 requires-python = ">=3.13"
 
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-extend-exclude = ["*/migrations/*"]
+extend-exclude = ["*/migrations/*", "config/migracoes/*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "DJ", "S", "SIM"]
-ignore = ["S101"]  # assert é usado nos testes
+ignore = ["S101"]  # tests use assert
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106"]
-# Dados e imagens de demonstração: aleatoriedade não criptográfica e textos longos
+# Demo data and images: non-cryptographic randomness and long strings
 "apps/catalogo/demo_imagens.py" = ["S311"]
 "apps/catalogo/management/commands/popular_demo.py" = ["S311", "S105", "E501"]
 
@@ -27,6 +27,6 @@ DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py"]
 addopts = "-q --strict-markers"
 filterwarnings = [
-    # O WhiteNoise avisa quando ainda não rodou o collectstatic; irrelevante nos testes.
+    # WhiteNoise warns when collectstatic hasn't run yet; irrelevant for tests.
     "ignore:No directory at:UserWarning",
 ]

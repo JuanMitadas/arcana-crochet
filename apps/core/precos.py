@@ -1,4 +1,4 @@
-"""Regras de preço exibidas na loja: desconto no Pix e parcelamento sem juros."""
+"""Pricing rules shown in the store: Pix discount and interest-free installments."""
 
 from dataclasses import dataclass
 from math import ceil
@@ -11,8 +11,8 @@ def _loja(chave):
 
 
 def preco_pix(centavos: int) -> int:
-    """Preço com o desconto do Pix, arredondado para o centavo."""
-    # Arredonda meio centavo para cima (igual ao Math.round do JavaScript da loja).
+    """Price with the Pix discount, rounded to the cent."""
+    # Rounds half a cent up (same as Math.round in the store's JavaScript).
     return (centavos * (100 - _loja("PIX_DESCONTO_PCT")) + 50) // 100
 
 
@@ -23,7 +23,7 @@ class Parcelamento:
 
 
 def parcelamento(centavos: int) -> Parcelamento:
-    """Maior número de parcelas sem juros que respeita a parcela mínima."""
+    """Largest number of interest-free installments that respects the minimum installment."""
     maximo = _loja("PARCELAS_SEM_JUROS")
     minima = _loja("PARCELA_MINIMA_CENTAVOS")
     vezes = 1
@@ -35,7 +35,7 @@ def parcelamento(centavos: int) -> Parcelamento:
 
 
 def opcoes_parcelamento(centavos: int) -> list[Parcelamento]:
-    """Todas as opções de 1x até o máximo permitido para o valor."""
+    """Every option from 1x up to the maximum allowed for the amount."""
     maximo = parcelamento(centavos).vezes
     return [Parcelamento(n, ceil(centavos / n)) for n in range(1, maximo + 1)]
 

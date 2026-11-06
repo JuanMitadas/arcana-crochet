@@ -1,4 +1,4 @@
-// Copia as fontes (auto-hospedadas por causa da CSP) de node_modules para static/fonts.
+// Copies the fonts (self-hosted because of the CSP) from node_modules to static/fonts.
 import { copyFileSync, mkdirSync } from "node:fs";
 
 const destino = "static/fonts";

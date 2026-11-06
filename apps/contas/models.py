@@ -28,7 +28,7 @@ class UsuarioManager(BaseUserManager):
 
 
 class Usuario(AbstractBaseUser, PermissionsMixin):
-    """Cliente da loja ou integrante da equipe. O login é sempre pelo e-mail."""
+    """Store customer or team member. Login is always by email."""
 
     class Papel(models.TextChoices):
         CLIENTE = "cliente", "Cliente"
@@ -86,7 +86,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 
 
 class Endereco(models.Model):
-    """Endereço de entrega salvo pelo cliente."""
+    """Shipping address saved by the customer."""
 
     UFS = [
         (uf, uf)
@@ -149,7 +149,7 @@ class Endereco(models.Model):
         return f"{self.cep[:5]}-{self.cep[5:]}" if len(self.cep) == 8 else self.cep
 
     def como_dict(self) -> dict:
-        """Cópia congelada no pedido: mudar o endereço depois não altera pedidos antigos."""
+        """Frozen copy for the order: changing the address later doesn't touch old orders."""
         campos = [
             "destinatario", "telefone", "cep", "logradouro", "numero",
             "complemento", "bairro", "cidade", "uf",

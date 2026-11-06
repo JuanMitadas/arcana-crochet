@@ -12,22 +12,21 @@ htmlcov/
 staticfiles/
 media/
 *.sqlite3
-celerybeat-schedule*
 
-# Segredos e certificados
+# Secrets and certificates
 .env
 .env.*
 !.env.example
 certs/
 *.pem
 
-# Editores e sistema
+# Editors and OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 
-# Frontend (o CSS compilado em static/css é versionado)
+# Frontend (the compiled CSS in static/css is committed)
 node_modules/
 
 # AWS SAM

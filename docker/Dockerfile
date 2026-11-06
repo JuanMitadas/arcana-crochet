@@ -1,4 +1,4 @@
-# Imagem única: desenvolvimento (docker compose) e produção (AWS Lambda).
+# One image for development (docker compose) and production (AWS Lambda).
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -6,8 +6,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Lambda Web Adapter: na Lambda, transforma cada evento em um pedido HTTP para o
-# gunicorn na porta 8000. Fora da Lambda (docker compose) ele fica inativo.
+# Lambda Web Adapter: on Lambda it turns each event into an HTTP request to gunicorn
+# on port 8000. Outside Lambda (docker compose) it stays idle.
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.0.1 /lambda-adapter /opt/extensions/lambda-adapter
 ENV AWS_LWA_PORT=8000 \
     AWS_LWA_READINESS_CHECK_PATH=/healthz/ \
@@ -22,8 +22,8 @@ RUN pip install -r requirements/${REQUIREMENTS}.txt
 
 COPY . .
 
-# collectstatic roda no build (o disco da Lambda é somente leitura); estas variáveis
-# só existem para o comando funcionar. O bytecode pré-compilado encurta o cold start.
+# collectstatic runs at build time (the Lambda disk is read-only); these variables only
+# exist so the command can run. Precompiled bytecode shortens the cold start.
 RUN SECRET_KEY=build DATABASE_URL=sqlite:////tmp/build.db python manage.py collectstatic --noinput \
     && python -m compileall -q -j 0 apps config
 
@@ -34,6 +34,6 @@ USER arcana
 
 EXPOSE 8000
 ENTRYPOINT ["/app/docker/entrypoint.sh"]
-# Um worker por instância: a Lambda entrega um pedido de cada vez. Em outro servidor,
-# defina WEB_CONCURRENCY para mais workers. Sem socket de controle (disco só leitura).
+# One worker per instance: Lambda delivers one request at a time. On another server,
+# set WEB_CONCURRENCY for more workers. No control socket (read-only disk).
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--timeout", "29", "--no-control-socket", "--access-logfile", "-"]

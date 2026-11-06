@@ -4,7 +4,7 @@ from .ids import uuid7
 
 
 class ModeloBase(models.Model):
-    """Base de todas as tabelas: id UUID v7 e datas de criação e atualização."""
+    """Base for every table: UUID v7 id plus created and updated timestamps."""
 
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     criado_em = models.DateTimeField("criado em", auto_now_add=True)
@@ -13,3 +13,24 @@ class ModeloBase(models.Model):
     class Meta:
         abstract = True
         ordering = ["-criado_em"]
+
+
+class EntradaCache(models.Model):
+    """Table for Django's DatabaseCache (``CACHE_URL=dbcache://cache_django``).
+
+    Declared as a model so the table is created by a regular migration:
+    ``createcachetable`` runs several DDL statements in one transaction, which Aurora
+    DSQL does not allow. Columns match what ``DatabaseCache`` expects.
+    """
+
+    cache_key = models.CharField(max_length=255, primary_key=True)
+    value = models.TextField()
+    expires = models.DateTimeField(db_index=True)
+
+    class Meta:
+        db_table = "cache_django"
+        verbose_name = "entrada de cache"
+        verbose_name_plural = "cache"
+
+    def __str__(self):
+        return self.cache_key

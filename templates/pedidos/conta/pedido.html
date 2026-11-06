@@ -21,7 +21,7 @@
   {% include "componentes/status_pedido.html" %}
 </header>
 
-{# Linha do tempo: Pagamento aprovado → Em separação → Enviado → Entregue #}
+{# Timeline: Payment approved → Being prepared → Shipped → Delivered #}
 {% if pedido.status != "cancelado" %}
 <section class="painel mt-6 p-5 md:p-7" aria-labelledby="titulo-acompanhamento">
   <h2 id="titulo-acompanhamento" class="sr-only">Acompanhamento</h2>

@@ -1,7 +1,7 @@
-"""Ilustrações de demonstração com textura de crochê, geradas com Pillow.
+"""Demo illustrations with a crochet texture, drawn with Pillow.
 
-Servem só para popular a loja em desenvolvimento enquanto as fotos reais não
-chegam. Cada peça é uma forma simples preenchida com fileiras de pontos.
+They only fill the store during development until the real photos arrive. Each
+piece is a simple shape filled with rows of stitches.
 """
 
 import io
@@ -24,7 +24,7 @@ def _misturar(a, b, t):
 
 
 def textura_croche(cor, tamanho=(LARGURA, ALTURA), passo=22, seed=0):
-    """Fileiras de pontos em "V", como o ponto baixo do crochê."""
+    """Rows of "V" stitches, like the crochet single stitch."""
     rnd = random.Random(seed)
     base = _hex(cor)
     clara = _misturar(base, (255, 255, 255), 0.28)
@@ -39,14 +39,14 @@ def textura_croche(cor, tamanho=(LARGURA, ALTURA), passo=22, seed=0):
             cy = y + rnd.randint(-1, 1)
             tom = _misturar(base, clara, rnd.uniform(0.1, 0.6))
             meia = passo // 2
-            # duas "pernas" do V
+            # the two "legs" of the V
             d.ellipse([cx - meia + 1, cy - 2, cx, cy + alto - 2], fill=tom)
             d.ellipse([cx, cy - 2, cx + meia - 1, cy + alto - 2], fill=_misturar(tom, base, 0.35))
             d.line([cx, cy + 1, cx, cy + alto - 4], fill=escura, width=2)
     return img.filter(ImageFilter.GaussianBlur(0.6))
 
 
-# --- Formas (máscaras em escala de cinza) ---------------------------------
+# --- Shapes (grayscale masks) ---------------------------------------------
 
 
 def _mascara():
@@ -56,13 +56,13 @@ def _mascara():
 def forma_urso():
     m = _mascara()
     d = ImageDraw.Draw(m)
-    d.ellipse([250, 520, 650, 960], fill=255)  # corpo
-    d.ellipse([255, 230, 645, 610], fill=255)  # cabeça
-    d.ellipse([245, 205, 365, 325], fill=255)  # orelhas
+    d.ellipse([250, 520, 650, 960], fill=255)  # body
+    d.ellipse([255, 230, 645, 610], fill=255)  # head
+    d.ellipse([245, 205, 365, 325], fill=255)  # ears
     d.ellipse([535, 205, 655, 325], fill=255)
-    d.ellipse([185, 600, 305, 760], fill=255)  # braços
+    d.ellipse([185, 600, 305, 760], fill=255)  # arms
     d.ellipse([595, 600, 715, 760], fill=255)
-    d.ellipse([270, 860, 420, 990], fill=255)  # pés
+    d.ellipse([270, 860, 420, 990], fill=255)  # feet
     d.ellipse([480, 860, 630, 990], fill=255)
     return m
 
@@ -70,7 +70,7 @@ def forma_urso():
 def detalhes_urso(img, cor):
     d = ImageDraw.Draw(img)
     claro = _misturar(_hex(cor), (255, 255, 255), 0.55)
-    d.ellipse([385, 420, 515, 520], fill=claro)  # focinho
+    d.ellipse([385, 420, 515, 520], fill=claro)  # snout
     d.ellipse([430, 435, 470, 462], fill=(40, 34, 32))
     d.ellipse([345, 375, 375, 410], fill=(30, 28, 28))
     d.ellipse([525, 375, 555, 410], fill=(30, 28, 28))
@@ -263,13 +263,13 @@ FORMAS = {
 
 
 def ilustrar(forma: str, cor: str, fundo: str | None = None, seed: int = 0, zoom=1.0) -> bytes:
-    """Devolve um WebP 900×1125 da peça na cor pedida."""
+    """Return a 900×1125 WebP of the piece in the given color."""
     fazer_mascara, detalhar = FORMAS[forma]
     rnd = random.Random(seed)
     fundo_rgb = _hex(fundo or rnd.choice(FUNDOS))
     img = Image.new("RGB", (LARGURA, ALTURA), fundo_rgb)
 
-    # Brilhos de fundo, como as estrelinhas do logo
+    # Background sparkles, like the little stars in the logo
     d = ImageDraw.Draw(img)
     tom = _misturar(fundo_rgb, (255, 255, 255), 0.5)
     for _ in range(7):
@@ -278,7 +278,7 @@ def ilustrar(forma: str, cor: str, fundo: str | None = None, seed: int = 0, zoom
         d.polygon([(x - r * 2, y), (x, y - r // 3), (x + r * 2, y), (x, y + r // 3)], fill=tom)
 
     mascara = fazer_mascara()
-    # Sombra suave
+    # Soft shadow
     sombra = mascara.filter(ImageFilter.GaussianBlur(28))
     sombra = ImageChops.offset(sombra, 14, 26).point(lambda p: int(p * 0.35))
     img.paste(_misturar(fundo_rgb, (0, 0, 0), 0.35), (0, 0), sombra)

@@ -9,14 +9,14 @@ from django.views.decorators.http import require_http_methods
 @never_cache
 @require_http_methods(["GET", "HEAD", "POST"])
 def healthz(request):
-    """Responde se a aplicação está no ar.
+    """Report whether the application is up.
 
-    Aceita POST porque o Lambda Web Adapter entrega aqui os eventos que não são
-    HTTP, como o ping de aquecimento do EventBridge (AWS_LWA_PASS_THROUGH_PATH).
+    Accepts POST because the Lambda Web Adapter delivers non-HTTP events here, such
+    as the EventBridge warm-up ping (AWS_LWA_PASS_THROUGH_PATH).
 
-    Por padrão não consulta o banco: o ping de aquecimento roda a cada 5 minutos e,
-    se acordasse o Neon, gastaria a cota grátis de processamento. Use ?banco=1 no
-    monitor de disponibilidade para checar também o banco.
+    By default it doesn't query the database: the warm-up ping runs every 5 minutes
+    and would spend Aurora DSQL usage for nothing. Use ?banco=1 in the uptime
+    monitor to check the database too.
     """
     if request.GET.get("banco") == "1":
         try:

@@ -43,7 +43,7 @@ class TestCarrinho:
     def test_item_que_esgotou_e_ajustado(self, carrinho, pronta, com_estoque):
         carrinho.adicionar(pronta, 2)
         servicos.registrar_movimentacao(pronta, "venda", -1)
-        novo = Carrinho(carrinho)  # mesma sessão
+        novo = Carrinho(carrinho)  # same session
         assert novo.itens[0].quantidade == 1
         assert novo.ajustado
 

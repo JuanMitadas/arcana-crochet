@@ -1,8 +1,8 @@
 /*
-  Arcana Crochet — comportamentos da loja.
-  Tudo aqui é melhoria progressiva: sem JavaScript, as páginas continuam funcionando
-  (formulários enviam normalmente, o seletor de variação vira um <select>).
-  Sem inline JS/CSS por causa da Content-Security-Policy.
+  Arcana Crochet — store behaviors.
+  Everything here is progressive enhancement: without JavaScript the pages still work
+  (forms submit normally, the variation picker becomes a <select>).
+  No inline JS/CSS because of the Content-Security-Policy.
 */
 (() => {
   "use strict";
@@ -18,7 +18,7 @@
     return el ? JSON.parse(el.textContent) : null;
   };
 
-  /* --- Carrosséis ------------------------------------------------------ */
+  /* --- Carousels ------------------------------------------------------- */
   function iniciarCarrosseis(raiz = document) {
     $$("[data-carrossel]", raiz).forEach((carrossel) => {
       if (carrossel.dataset.pronto) return;
@@ -46,7 +46,7 @@
     });
   }
 
-  /* --- Galeria do produto ---------------------------------------------- */
+  /* --- Product gallery ------------------------------------------------- */
   function iniciarGaleria() {
     const galeria = $("[data-galeria]");
     if (!galeria) return;
@@ -66,7 +66,7 @@
       botao.addEventListener("click", () => mostrar(Number(botao.dataset.miniatura)))
     );
 
-    // Deslizar com o dedo na foto principal
+    // Swipe on the main photo
     let inicioX = null;
     const principal = $(".galeria__principal", galeria);
     principal?.addEventListener("touchstart", (e) => (inicioX = e.touches[0].clientX), { passive: true });
@@ -80,7 +80,7 @@
     });
   }
 
-  /* --- Preços (mesmas regras de apps/core/precos.py) ------------------ */
+  /* --- Prices (same rules as apps/core/precos.py) --------------------- */
   function calcularPrecos(centavos, regras) {
     const pix = Math.round((centavos * (100 - regras.pix)) / 100);
     let vezes = 1;
@@ -95,7 +95,7 @@
     return { pix, vezes, parcela: Math.ceil(centavos / vezes), opcoes };
   }
 
-  /* --- Seletor de variação (cor e tamanho) ----------------------------- */
+  /* --- Variation picker (color and size) ------------------------------- */
   function iniciarSeletorVariacao() {
     const form = $("[data-compra]");
     const variacoes = lerJSON("dados-variacoes");
@@ -173,7 +173,7 @@
       const nomeCor = $("[data-nome-cor]", form);
       if (nomeCor) nomeCor.textContent = cor;
 
-      // Tamanhos sem estoque para a cor escolhida ficam riscados
+      // Sizes with no stock for the chosen color are struck through
       tamanhos.forEach((radio) => {
         const existe = variacoes.some(
           (v) => (!cor || v.cor === cor) && v.tamanho === radio.value && disponivel(v)
@@ -206,7 +206,7 @@
     if (cores.length || tamanhos.length) aplicar();
   }
 
-  /* --- Quantidade (+/-) ------------------------------------------------ */
+  /* --- Quantity (+/-) -------------------------------------------------- */
   function iniciarQuantidades() {
     $$("[data-quantidade]").forEach((caixa) => {
       const input = $("input", caixa);
@@ -238,7 +238,7 @@
     });
   }
 
-  /* --- CEP: máscara e preenchimento automático (ViaCEP) ---------------- */
+  /* --- CEP: input mask and address autofill (ViaCEP) ------------------- */
   const mascararCep = (valor) => {
     const n = valor.replace(/\D/g, "").slice(0, 8);
     return n.length > 5 ? `${n.slice(0, 5)}-${n.slice(5)}` : n;
@@ -287,7 +287,7 @@
     });
   }
 
-  /* --- Copiar (código Pix, rastreio) ---------------------------------- */
+  /* --- Copy (Pix code, tracking) -------------------------------------- */
   function iniciarCopiar() {
     $$("[data-copiar]").forEach((botao) => {
       botao.addEventListener("click", async () => {
@@ -332,19 +332,19 @@
       menu?.removeAttribute("open");
     });
 
-    // Filtros da listagem começam fechados no celular
+    // Listing filters start collapsed on phones
     const filtros = $("[data-filtros]");
     if (filtros && window.matchMedia("(max-width: 1023px)").matches) {
       filtros.removeAttribute("open");
     }
-    // Resumo do checkout começa fechado no celular
+    // The checkout summary starts collapsed on phones
     const resumo = $("[data-resumo-checkout]");
     if (resumo && window.matchMedia("(max-width: 1023px)").matches) {
       resumo.removeAttribute("open");
     }
   }
 
-  /* --- Checkout: escolha de endereço ------------------------------------ */
+  /* --- Checkout: address choice ---------------------------------------- */
   function iniciarEntrega() {
     const formEndereco = $("[data-form-endereco]");
     if (!formEndereco) return;
@@ -357,7 +357,7 @@
           formEndereco.querySelector("input")?.focus();
           return;
         }
-        // Endereço salvo escolhido: recalcula o frete para o CEP dele
+        // A saved address was picked: recompute shipping for its CEP
         const form = radio.form;
         const acao = document.createElement("input");
         acao.type = "hidden";
@@ -384,6 +384,6 @@
     iniciarEntrega();
   });
 
-  // Conteúdo trocado pelo HTMX (filtros, sacola) também ganha os comportamentos
+  // Content swapped in by HTMX (filters, bag) gets the behaviors too
   document.addEventListener("htmx:afterSettle", (e) => iniciar(e.target));
 })();

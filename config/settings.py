@@ -1,6 +1,7 @@
-"""Configurações do projeto Arcana Crochet.
+"""Arcana Crochet project settings.
 
-Tudo que muda entre ambientes vem de variáveis de ambiente (ver .env.example).
+Everything that changes between environments comes from environment variables
+(see .env.example).
 """
 
 import os
@@ -15,21 +16,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env")
-# Na AWS os segredos ficam no SSM Parameter Store (ver docs/deploy.md).
+# On AWS, secrets live in SSM Parameter Store (see docs/deploy.md).
 carregar_parametros(os.environ.get("AWS_SSM_PREFIX", ""))
 
-# --- Núcleo -----------------------------------------------------------------
+# --- Core -------------------------------------------------------------------
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 SITE_URL = env("SITE_URL", default="http://localhost:8000")
-# Em produção use um caminho difícil de adivinhar.
+# In production use a path that is hard to guess.
 ADMIN_URL = env("ADMIN_URL", default="admin/")
 
-# Na AWS, o CloudFront envia este segredo em todo pedido à Lambda; pedidos sem ele
-# (alguém chamando a URL da Lambda direto, sem passar pelo CloudFront) recebem 403.
+# On AWS, CloudFront sends this secret with every request to the Lambda; requests
+# without it (someone calling the Lambda URL directly, bypassing CloudFront) get 403.
 ORIGEM_SEGREDO = env("ORIGEM_SEGREDO", default="")
 
 INSTALLED_APPS = [
@@ -40,13 +41,12 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
-    "django.contrib.postgres",
-    # terceiros
+    # third party
     "allauth",
     "allauth.account",
     "allauth.mfa",
     "django_htmx",
-    # projeto
+    # project
     "apps.core",
     "apps.contas",
     "apps.catalogo",
@@ -91,19 +91,51 @@ TEMPLATES = [
     },
 ]
 
-# --- Banco de dados ---------------------------------------------------------
+# --- Database ---------------------------------------------------------------
 
-DATABASES = {"default": env.db("DATABASE_URL")}
-DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
-DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
-if env.bool("DATABASE_POOLER", default=False):
-    # Conexão "pooled" do Neon (PgBouncer em modo transação): sem prepared statements
-    # nem cursores no servidor, que não sobrevivem à troca de conexão entre transações.
-    DATABASES["default"].setdefault("OPTIONS", {})["prepare_threshold"] = None
-    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
+DSQL_ENDPOINT = env("DSQL_ENDPOINT", default="")
+if DSQL_ENDPOINT:
+    # Aurora DSQL on AWS. There is no password: the connector signs a short-lived IAM
+    # token for every new connection with the Lambda's (or your) AWS credentials.
+    DATABASES = {
+        "default": {
+            "ENGINE": "config.dsql",
+            "HOST": DSQL_ENDPOINT,
+            "PORT": env.int("DSQL_PORT", default=5432),
+            "NAME": env("DSQL_DBNAME", default="postgres"),
+            "USER": env("DSQL_USER", default="admin"),
+            "OPTIONS": {
+                "sslmode": env("DSQL_SSLMODE", default="require"),
+                **({"region": env("DSQL_REGION")} if env("DSQL_REGION", default="") else {}),
+            },
+            # Integer ids (Django, allauth, order items) as identity columns instead of
+            # the adapter's default of turning every AutoField into a UUID. CACHE 1 keeps
+            # them sequential: with DSQL's other option (65536) every new connection
+            # skips ahead 65536 ids, and Django's integer foreign keys would overflow.
+            "USE_SEQUENCE_AUTOFIELDS": True,
+            "SEQUENCE_CACHE_SIZE": 1,
+            # DSQL closes connections after one hour.
+            "CONN_MAX_AGE": env.int("DB_CONN_MAX_AGE", default=300),
+            "CONN_HEALTH_CHECKS": True,
+        }
+    }
+else:
+    # Local development, CI and docker-compose: plain PostgreSQL.
+    DATABASES = {"default": env.db("DATABASE_URL")}
+    DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
+    DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# --- Autenticação -----------------------------------------------------------
+# Aurora DSQL can't change a column's type, drop a column or a NOT NULL, and these
+# apps did all of that over the years. config/migracoes/ holds their migrations
+# rebuilt as a single 0001 with the final schema, plus empty files with the original
+# names so dependencies still resolve. tests/test_dsql.py fails when an upgrade
+# adds a migration that is missing here.
+MIGRATION_MODULES = {
+    app: f"config.migracoes.{app}" for app in ("contenttypes", "auth", "account", "mfa")
+}
+
+# --- Authentication ---------------------------------------------------------
 
 AUTH_USER_MODEL = "contas.Usuario"
 
@@ -130,7 +162,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LOGIN_REDIRECT_URL = "pedidos:lista"
 LOGIN_URL = "account_login"
 
-# django-allauth: login só por e-mail, com verificação obrigatória.
+# django-allauth: email-only login, with mandatory verification.
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
@@ -138,31 +170,31 @@ ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE = False
-# Autenticação rápida: código de 6 dígitos por e-mail para confirmar o cadastro
-# e para entrar sem senha (útil no checkout).
+# Quick authentication: a 6-digit code by email to confirm the sign-up and to log in
+# without a password (handy at checkout).
 ACCOUNT_EMAIL_VERIFICATION_BY_CODE_ENABLED = True
 ACCOUNT_LOGIN_BY_CODE_ENABLED = True
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "[Arcana Crochet] "
 ACCOUNT_RATE_LIMITS = {
-    # 10 falhas por minuto por IP e 5 a cada 15 minutos por conta.
+    # 10 failures per minute per IP and 5 every 15 minutes per account.
     "login_failed": "10/m/ip,5/900s/key",
 }
 MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]
 MFA_TOTP_ISSUER = "Arcana Crochet"
 
-# Na AWS, uma CloudFront Function grava o IP do visitante em X-Arcana-Ip (e apaga
-# qualquer valor enviado pelo próprio visitante). Sem isso, todos os pedidos teriam o
-# mesmo IP e o limite de tentativas de login valeria para a loja inteira.
+# On AWS, a CloudFront Function writes the visitor's IP to X-Arcana-Ip (and drops
+# any value the visitor sent). Without it every request would have the same IP and
+# the login attempt limit would apply to the whole store.
 ALLAUTH_TRUSTED_CLIENT_IP_HEADER = env("TRUSTED_CLIENT_IP_HEADER", default=None)
 
-# --- Internacionalização ----------------------------------------------------
+# --- Internationalization ---------------------------------------------------
 
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"
 USE_I18N = True
 USE_TZ = True
 
-# --- Arquivos estáticos e uploads -------------------------------------------
+# --- Static files and uploads -----------------------------------------------
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -170,8 +202,8 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = env("MEDIA_URL", default="/media/")
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Na AWS (MIDIA_BUCKET definido), as fotos vão para o S3 e são servidas pelo
-# CloudFront no mesmo domínio do site, em /media/.
+# On AWS (MIDIA_BUCKET set), photos go to S3 and are served by CloudFront on the
+# site's own domain, under /media/.
 MIDIA_BUCKET = env("MIDIA_BUCKET", default="")
 if MIDIA_BUCKET:
     media_storage = {
@@ -200,14 +232,14 @@ STORAGES = {
     },
 }
 
-# A URL da Lambda aceita no máximo 6 MB por pedido: fotos maiores precisam ser
-# reduzidas antes do envio (ou, no futuro, enviadas direto ao S3).
+# The Lambda URL accepts at most 6 MB per request: larger photos must be resized
+# before upload (or, in the future, uploaded straight to S3).
 DATA_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
 
 # --- E-mail -----------------------------------------------------------------
 
-# EMAIL_URL no formato do django-environ, ex.: smtp+tls://usuario:senha@smtp.resend.com:587
+# EMAIL_URL in django-environ format, e.g. smtp+tls://user:password@smtp.resend.com:587
 _email = env.email("EMAIL_URL", default="consolemail://")
 _opcoes_smtp = {
     "host": _email.get("EMAIL_HOST"),
@@ -233,11 +265,12 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # --- Cache -------------------------------------------------------------------
 
-# Na Lambda cada instância tem a própria memória, então o cache (usado no limite de
-# tentativas de login) fica no banco: CACHE_URL=dbcache://cache_django.
+# On Lambda each instance has its own memory, so the cache (used by the login attempt
+# limit) lives in the database: CACHE_URL=dbcache://cache_django. The table is
+# created by a migration (apps.core.models.EntradaCache).
 CACHES = {"default": env.cache("CACHE_URL", default="locmemcache://")}
 
-# --- Segurança --------------------------------------------------------------
+# --- Security ---------------------------------------------------------------
 
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -252,7 +285,7 @@ SECURE_CSP = {
     "style-src": [CSP.SELF],
     "img-src": [CSP.SELF, "data:", *env.list("CSP_IMG_SRC", default=[])],
     "font-src": [CSP.SELF],
-    # ViaCEP preenche o endereço a partir do CEP no checkout.
+    # ViaCEP fills in the address from the CEP at checkout.
     "connect-src": [CSP.SELF, "https://viacep.com.br"],
     "media-src": [CSP.SELF, *env.list("CSP_IMG_SRC", default=[])],
     "frame-ancestors": [CSP.NONE],
@@ -262,8 +295,8 @@ SECURE_CSP = {
 }
 
 if not DEBUG:
-    # O HTTPS termina no CloudFront/URL da Lambda, que informam o protocolo original
-    # neste cabeçalho.
+    # HTTPS ends at CloudFront/the Lambda URL, which report the original protocol in
+    # this header.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
     SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
@@ -272,14 +305,14 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=60 * 60 * 24 * 365)
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = False
-    # Preload só depois de o domínio estar estável em HTTPS; é difícil de desfazer.
+    # Preload only once the domain is stable on HTTPS; it is hard to undo.
     SILENCED_SYSTEM_CHECKS = ["security.W021"]
 
-# Atrás do CloudFront, o domínio que o visitante digitou chega em X-Forwarded-Host
-# (gravado pela CloudFront Function; o Host original não é repassado à Lambda).
+# Behind CloudFront, the domain the visitor typed arrives in X-Forwarded-Host (set
+# by the CloudFront Function; the original Host isn't forwarded to the Lambda).
 USE_X_FORWARDED_HOST = env.bool("USE_X_FORWARDED_HOST", default=False)
 
-# --- Regras comerciais da loja ---------------------------------------------
+# --- Store business rules ---------------------------------------------------
 
 LOJA = {
     "PIX_DESCONTO_PCT": env.int("LOJA_PIX_DESCONTO_PCT", default=5),

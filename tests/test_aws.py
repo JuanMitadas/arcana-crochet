@@ -1,4 +1,4 @@
-"""Peças da hospedagem na AWS: origem do CloudFront, fotos no S3, segredos no SSM."""
+"""AWS hosting pieces: CloudFront origin, photos on S3, secrets in SSM."""
 
 import os
 
@@ -13,7 +13,7 @@ SEGREDO = "segredo-de-teste-com-mais-de-32-caracteres"
 
 @pytest.fixture
 def via_cloudfront(settings):
-    """Cliente com o segredo de origem ligado (o middleware lê o segredo ao ser criado)."""
+    """Client with the origin secret enabled (the middleware reads it when created)."""
     settings.ORIGEM_SEGREDO = SEGREDO
     return Client()
 
@@ -36,7 +36,7 @@ class TestOrigemCloudFront:
 
     def test_healthz_fica_livre_para_o_aquecimento(self, via_cloudfront):
         assert via_cloudfront.get("/healthz/").status_code == 200
-        # O Lambda Web Adapter entrega os eventos do EventBridge como POST.
+        # The Lambda Web Adapter delivers EventBridge events as POST.
         resposta = via_cloudfront.post("/healthz/", data="{}", content_type="application/json")
         assert resposta.json() == {"status": "ok"}
 
@@ -77,12 +77,12 @@ def test_fotos_no_s3_tem_url_relativa_servida_pelo_cloudfront():
 
     storage = MidiaS3(bucket_name="arcana-midia", location="media", region_name="sa-east-1")
     assert storage.url("produtos/abc/1 foto.webp") == "/media/produtos/abc/1%20foto.webp"
-    # No bucket, o arquivo fica sob media/, que é o caminho liberado para o CloudFront.
+    # In the bucket the file lives under media/, the path CloudFront is allowed to read.
     assert storage._normalize_name("produtos/abc/1.webp") == "media/produtos/abc/1.webp"
 
 
 class SsmFalso:
-    """Imita o paginador do boto3 para get_parameters_by_path."""
+    """Mimics boto3's paginator for get_parameters_by_path."""
 
     def __init__(self, parametros):
         self.parametros = parametros

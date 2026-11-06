@@ -1,4 +1,3 @@
-from django.contrib.postgres.search import TrigramSimilarity
 from django.core.paginator import Paginator
 from django.db.models import Count, Prefetch, Q
 from django.db.models.functions import Lower
@@ -7,6 +6,7 @@ from django.views.decorators.http import require_POST
 
 from apps.avaliacoes.models import Avaliacao
 from apps.core import precos
+from apps.core.texto import normalizar, semelhanca
 from apps.pedidos import frete as modulo_frete
 
 from .models import Categoria, Produto, ProdutoFoto, ProdutoVariacao
@@ -31,7 +31,7 @@ FAIXAS_PRECO = [
 
 
 def vitrine_qs():
-    """Produtos visíveis com fotos, variações ativas e métricas para os cards."""
+    """Visible products with photos, active variations and metrics for the cards."""
     return (
         Produto.objects.visiveis()
         .com_metricas()
@@ -43,7 +43,7 @@ def vitrine_qs():
     )
 
 
-# --- Página inicial --------------------------------------------------------
+# --- Home page -------------------------------------------------------------
 
 
 def home(request):
@@ -60,7 +60,7 @@ def home(request):
     return render(request, "catalogo/home.html", contexto)
 
 
-# --- Listagem: categoria, busca e todas as peças ---------------------------
+# --- Listing: category, search and all pieces -------------------------------
 
 
 def _reais_para_centavos(valor: str):
@@ -70,26 +70,29 @@ def _reais_para_centavos(valor: str):
         return None
 
 
-# Palavras que toda peça tem: não filtram nada, então são ignoradas na busca.
-PALAVRAS_VAZIAS = {"croche", "crochê", "crochet", "de", "da", "do", "das", "dos", "em",
-                   "para", "com", "e", "a", "o", "feito", "feita", "mao", "mão"}  # fmt: skip
+# Words every piece has: they filter nothing, so search ignores them (already normalized).
+PALAVRAS_VAZIAS = {"croche", "crochet", "de", "da", "do", "das", "dos", "em", "para",
+                   "com", "e", "a", "o", "feito", "feita", "mao"}  # fmt: skip
 
 
 def _buscar(produtos, termo: str):
-    palavras = [p for p in termo.lower().split() if p not in PALAVRAS_VAZIAS]
+    palavras = [p for p in normalizar(termo).split() if p not in PALAVRAS_VAZIAS]
     for palavra in palavras:
-        produtos = produtos.filter(
-            Q(nome__unaccent__icontains=palavra)
-            | Q(descricao__unaccent__icontains=palavra)
-            | Q(material__unaccent__icontains=palavra)
-            | Q(categoria__nome__unaccent__icontains=palavra)
-            | Q(variacoes__cor__unaccent__icontains=palavra)
-        )
-    return produtos.distinct()
+        produtos = produtos.filter(busca__contains=palavra)
+    return produtos
+
+
+def _sugestoes(termo: str, limite: int = 4):
+    """Pieces whose name looks like the search term, for searches with a typo."""
+    nomes = Produto.objects.visiveis().values_list("pk", "nome")
+    notas = sorted(((semelhanca(termo, nome), pk) for pk, nome in nomes), key=lambda par: -par[0])
+    escolhidos = [pk for nota, pk in notas[:limite] if nota >= 0.7]
+    por_pk = {p.pk: p for p in vitrine_qs().filter(pk__in=escolhidos)}
+    return [por_pk[pk] for pk in escolhidos if pk in por_pk]
 
 
 def _facetas(produtos):
-    """Valores disponíveis para os filtros, contados sobre o resultado sem esses filtros."""
+    """Values available for the filters, counted on the result without those filters."""
     variacoes = ProdutoVariacao.objects.filter(ativa=True, produto__in=produtos.values("pk"))
     cores = (
         variacoes.exclude(cor="")
@@ -97,7 +100,7 @@ def _facetas(produtos):
         .annotate(total=Count("produto", distinct=True))
         .order_by("cor")
     )
-    # Uma linha por cor, mesmo que duas variações tenham hex diferente.
+    # One row per color, even if two variations have a different hex.
     vistas, lista_cores = set(), []
     for cor in cores:
         if cor["cor"].lower() not in vistas:
@@ -147,7 +150,7 @@ def listagem(request, slug=None):
     if termo:
         produtos = _buscar(produtos, termo)
 
-    base = produtos  # antes dos filtros, para montar as facetas
+    base = produtos  # before the filters, to build the facets
     get = request.GET
     filtros = {
         "cores": [c for c in get.getlist("cor") if c],
@@ -188,14 +191,7 @@ def listagem(request, slug=None):
 
     pagina = Paginator(produtos, POR_PAGINA).get_page(get.get("page"))
 
-    sugestoes = []
-    if termo and not pagina.paginator.count:
-        sugestoes = (
-            vitrine_qs()
-            .annotate(similaridade=TrigramSimilarity("nome", termo))
-            .filter(similaridade__gt=0.15)
-            .order_by("-similaridade")[:4]
-        )
+    sugestoes = _sugestoes(termo) if termo and not pagina.paginator.count else []
 
     chips = _chips(filtros, request)
     contexto = {
@@ -218,7 +214,7 @@ def listagem(request, slug=None):
 
 
 def _chips(filtros, request):
-    """Filtros ativos como etiquetas removíveis."""
+    """Active filters as removable chips."""
     chips = []
 
     def sem(chave, valor=None):
@@ -258,7 +254,7 @@ def _chips(filtros, request):
     return chips
 
 
-# --- Página do produto -----------------------------------------------------
+# --- Product page ----------------------------------------------------------
 
 
 def produto_detalhe(request, slug):
@@ -334,7 +330,7 @@ def produto_detalhe(request, slug):
 
 @require_POST
 def produto_frete(request, slug):
-    """Cálculo rápido de frete na página do produto (HTMX)."""
+    """Quick shipping quote on the product page (HTMX)."""
     produto = get_object_or_404(Produto.objects.visiveis(), slug=slug)
     cep = modulo_frete.limpar_cep(request.POST.get("cep", ""))
     contexto = {"cep": cep, "erro": "", "opcoes": []}

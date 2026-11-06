@@ -47,7 +47,7 @@ def admin_usuario(db):
 
 @pytest.fixture
 def com_estoque():
-    """Dá entrada de ``quantidade`` unidades numa variação."""
+    """Add ``quantidade`` units of stock to a variation."""
 
     def _entrada(variacao, quantidade):
         registrar_movimentacao(variacao, MovimentacaoEstoque.Tipo.ENTRADA_PRODUCAO, quantidade)

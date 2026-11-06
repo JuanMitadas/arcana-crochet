@@ -1,6 +1,6 @@
-"""Cria o grupo "Atendimento" com as permissões do papel de atendente.
+"""Create the "Atendimento" (customer service) group with the attendant's permissions.
 
-Para dar acesso a alguém da equipe: papel "Atendente" + grupo "Atendimento".
+To give a team member access: role "Atendente" + group "Atendimento".
 """
 
 from django.contrib.auth.management import create_permissions

@@ -17,7 +17,7 @@
   </nav>
 
   <div class="mt-6 grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
-    {# Galeria #}
+    {# Gallery #}
     <section aria-label="Fotos e vídeo da peça" class="lg:sticky lg:top-40 self-start" data-galeria>
       {% with fotos=produto.fotos.all %}
       <div class="galeria__principal">
@@ -48,7 +48,7 @@
       {% endwith %}
     </section>
 
-    {# Informações e caixa de compra #}
+    {# Details and buy box #}
     <section aria-labelledby="nome-produto">
       <a href="{% url 'catalogo:categoria' produto.categoria.slug %}" class="text-sm font-semibold text-turquesa no-underline hover:underline">{{ produto.categoria.nome }}</a>
       <h1 id="nome-produto" class="mt-1 text-4xl md:text-5xl">{{ produto.nome }}</h1>
@@ -87,7 +87,7 @@
 
         <hr class="my-5 border-creme-3">
 
-        {# Seletor de variação: sem JS, um select simples; com JS, amostras de cor e tamanho #}
+        {# Variation picker: without JS a plain select; with JS, color swatches and sizes #}
         {% if variacoes|length > 1 %}
           <div data-seletor-simples>
             <label for="variacao" class="mb-1 block">Opção</label>
@@ -166,7 +166,7 @@
         {% endif %}
       </form>
 
-      {# Frete #}
+      {# Shipping #}
       <section class="painel-suave mt-4 p-5" aria-labelledby="titulo-frete">
         <h2 id="titulo-frete" class="flex items-center gap-2 font-sans text-base font-bold"><svg class="icone" aria-hidden="true"><use href="#i-caminhao"/></svg>Calcular frete e prazo</h2>
         <form class="mt-3 flex gap-2" hx-post="{% url 'catalogo:produto_frete' produto.slug %}" hx-target="#frete-resultado" hx-include="[name=quantidade]" method="post" action="{% url 'catalogo:produto_frete' produto.slug %}">
@@ -187,7 +187,7 @@
     </section>
   </div>
 
-  {# Descrição e ficha técnica #}
+  {# Description and spec sheet #}
   <div class="mt-20 grid gap-12 lg:grid-cols-2 lg:gap-16">
     <section aria-labelledby="titulo-descricao">
       <h2 id="titulo-descricao" class="titulo-secao">Sobre a peça</h2>
@@ -218,7 +218,7 @@
     </section>
   </div>
 
-  {# Avaliações #}
+  {# Reviews #}
   <section id="avaliacoes" class="mt-20 scroll-mt-36" aria-labelledby="titulo-avaliacoes">
     <h2 id="titulo-avaliacoes" class="titulo-secao">O que dizem de quem recebeu</h2>
     <svg class="onda" aria-hidden="true"><use href="#i-onda"/></svg>

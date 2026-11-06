@@ -5,6 +5,10 @@ django-htmx==1.29.0
 django-storages[s3]==1.14.6
 boto3==1.43.123
 psycopg[binary]==3.3.6
+# Aurora DSQL: Django adapter and the connector that signs the IAM token per connection
+aurora-dsql-django==0.7.0
+aurora-dsql-python-connector==0.2.7
+psycopg-pool==3.3.3
 argon2-cffi==25.1.0
 pillow==13.0.0
 whitenoise==6.12.0

@@ -1,5 +1,5 @@
-# Ambiente de desenvolvimento: docker compose up
-# O código é montado como volume, então alterações aparecem sem rebuild.
+# Development environment: docker compose up
+# The code is mounted as a volume, so changes show up without a rebuild.
 services:
   db:
     image: postgres:18

@@ -1,13 +1,16 @@
-"""Regras do ciclo de vida do pedido. As views e o painel chamam só estas funções."""
+"""Order lifecycle rules. Views and the admin only call these functions.
+
+Each one is an ``atomico`` transaction: on Aurora DSQL a conflict with another
+transaction (two people buying the last piece) makes it run again from the start."""
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
 from apps.catalogo.estoque import atualizar_status_esgotado, registrar_movimentacao
 from apps.catalogo.models import MovimentacaoEstoque, ProdutoVariacao
 from apps.core import precos
+from apps.core.transacoes import atomico
 
 from .carrinho import Carrinho
 from .models import Cupom, Pedido, PedidoItem
@@ -17,14 +20,14 @@ class TransicaoInvalida(ValidationError):
     pass
 
 
-@transaction.atomic
+@atomico
 def criar_pedido(
     cliente, carrinho: Carrinho, endereco, metodo: str, parcelas: int = 1, observacao: str = ""
 ) -> Pedido:
-    """Fecha a sacola em um pedido aguardando pagamento.
+    """Turn the bag into an order awaiting payment.
 
-    Peças de pronta entrega ficam reservadas (não aparecem como disponíveis para
-    outra pessoa) até o pagamento ser aprovado ou o pedido ser cancelado.
+    Ready-to-ship pieces are reserved (no longer shown as available to anyone else)
+    until the payment is approved or the order is cancelled.
     """
     itens = carrinho.itens
     if not itens:
@@ -113,9 +116,9 @@ def _liberar_reserva(item: PedidoItem) -> ProdutoVariacao:
     return variacao
 
 
-@transaction.atomic
+@atomico
 def marcar_pago(pedido: Pedido) -> Pedido:
-    """Pagamento aprovado: a reserva vira baixa definitiva no estoque."""
+    """Payment approved: the reservation becomes a final stock deduction."""
     pedido = _travar(pedido)
     if pedido.status != Pedido.Status.AGUARDANDO_PAGAMENTO:
         raise TransicaoInvalida(f"O pedido {pedido} não está aguardando pagamento.")
@@ -130,9 +133,9 @@ def marcar_pago(pedido: Pedido) -> Pedido:
     return pedido
 
 
-@transaction.atomic
+@atomico
 def avancar(pedido: Pedido, codigo_rastreio: str = "", transportadora: str = "") -> Pedido:
-    """Pago → Em separação → Enviado (exige rastreio) → Entregue."""
+    """Paid → Being prepared → Shipped (requires tracking) → Delivered."""
     pedido = _travar(pedido)
     proximo = Pedido.PROXIMO.get(pedido.status)
     if proximo is None:
@@ -160,9 +163,9 @@ def avancar(pedido: Pedido, codigo_rastreio: str = "", transportadora: str = "")
     return pedido
 
 
-@transaction.atomic
+@atomico
 def cancelar(pedido: Pedido, motivo: str = "") -> Pedido:
-    """Cancela antes do envio e devolve as peças ao estoque."""
+    """Cancel before shipping and return the pieces to stock."""
     pedido = _travar(pedido)
     if pedido.status not in (
         Pedido.Status.AGUARDANDO_PAGAMENTO,

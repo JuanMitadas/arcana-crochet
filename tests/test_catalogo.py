@@ -111,7 +111,7 @@ class TestVitrine:
         assert resposta.status_code == 200
         conteudo = resposta.content.decode()
         assert "R$ 129,90" in conteudo
-        assert "R$ 123,41" in conteudo  # preço no Pix (5% de desconto)
+        assert "R$ 123,41" in conteudo  # Pix price (5% off)
 
     def test_rascunho_nao_tem_pagina_publica(self, client, criar_produto):
         produto = criar_produto(status=Produto.Status.RASCUNHO)

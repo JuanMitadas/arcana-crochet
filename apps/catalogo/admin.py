@@ -119,7 +119,7 @@ class MovimentacaoForm(forms.ModelForm):
 
 @admin.register(MovimentacaoEstoque)
 class MovimentacaoEstoqueAdmin(admin.ModelAdmin):
-    """Registrar uma movimentação aqui é a forma de alterar o estoque pelo painel."""
+    """Recording a movement here is how stock is changed from the admin."""
 
     form = MovimentacaoForm
     list_display = ["criado_em", "variacao", "tipo", "quantidade", "estoque_resultante", "autor"]
@@ -128,7 +128,7 @@ class MovimentacaoEstoqueAdmin(admin.ModelAdmin):
     autocomplete_fields = ["variacao"]
 
     def has_change_permission(self, request, obj=None):
-        return False  # o histórico é imutável
+        return False  # the history is immutable
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -139,7 +139,7 @@ class MovimentacaoEstoqueAdmin(admin.ModelAdmin):
                 obj.variacao, obj.tipo, obj.quantidade, autor=request.user, motivo=obj.motivo
             )
         except ValidationError as erro:
-            # Só acontece se outra operação mudou o estoque entre a validação e o salvamento.
+            # Only happens if another operation changed the stock between validation and save.
             self.message_user(request, erro.messages[0], level=messages.ERROR)
             raise
         obj.pk = nova.pk

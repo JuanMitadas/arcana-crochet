@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Cria ou atualiza os segredos da loja no SSM Parameter Store (/arcana/<ambiente>/).
+# Creates or updates the store's secrets in SSM Parameter Store (/arcana/<environment>/).
 #
-# Rode no AWS CloudShell (já vem com a AWS CLI), na região sa-east-1:
-#   bash infra/configurar-segredos.sh            # ambiente prod
+# Run it in AWS CloudShell (it ships with the AWS CLI), in the sa-east-1 region:
+#   bash infra/configurar-segredos.sh            # prod environment
 #
-# SECRET_KEY e ORIGEM_SEGREDO são gerados automaticamente na primeira vez e mantidos
-# depois. Os demais valores são perguntados; deixe em branco para não mexer.
+# SECRET_KEY and ORIGEM_SEGREDO are generated the first time and kept afterwards. The
+# other values are asked for; leave one blank to keep it as it is. The database needs
+# no secret: the Lambda connects to Aurora DSQL with an IAM token.
 set -euo pipefail
 
 ambiente="${1:-prod}"
@@ -16,7 +17,7 @@ existe() {
   aws ssm get-parameter --region "$regiao" --name "$prefixo/$1" >/dev/null 2>&1
 }
 
-gravar() { # nome valor tipo
+gravar() { # name value type
   aws ssm put-parameter --region "$regiao" --name "$prefixo/$1" --value "$2" \
     --type "$3" --overwrite >/dev/null
   echo "  ✓ $prefixo/$1"
@@ -26,27 +27,26 @@ gerar() {
   python3 -c "import secrets; print(secrets.token_urlsafe(50))"
 }
 
-perguntar() { # nome descricao tipo
+perguntar() { # name description type
   local valor
-  read -r -s -p "$2 (Enter para pular): " valor
+  read -r -s -p "$2 (Enter to skip): " valor
   echo
   if [[ -n "$valor" ]]; then
     gravar "$1" "$valor" "$3"
   fi
 }
 
-echo "Segredos em $prefixo (região $regiao)"
+echo "Secrets in $prefixo (region $regiao)"
 
 existe SECRET_KEY || gravar SECRET_KEY "$(gerar)" SecureString
-# String (não SecureString) porque o CloudFormation precisa ler o valor para
-# configurar o cabeçalho X-Arcana-Origem no CloudFront.
+# String (not SecureString) because CloudFormation has to read the value to set the
+# X-Arcana-Origem header on CloudFront.
 existe ORIGEM_SEGREDO || gravar ORIGEM_SEGREDO "$(gerar)" String
 
-perguntar DATABASE_URL "Connection string POOLED do Neon (postgresql://...-pooler...)" SecureString
-perguntar EMAIL_URL "SMTP para os e-mails, ex.: smtp+tls://resend:<api-key>@smtp.resend.com:587" SecureString
-perguntar DEFAULT_FROM_EMAIL "Remetente, ex.: Arcana Crochet <nao-responda@arcanacrochet.com.br>" String
-perguntar ADMIN_URL "Caminho do painel, ex.: painel-x7k2/ (termine com /)" String
+perguntar EMAIL_URL "SMTP for emails, e.g. smtp+tls://resend:<api-key>@smtp.resend.com:587" SecureString
+perguntar DEFAULT_FROM_EMAIL "Sender, e.g. Arcana Crochet <nao-responda@arcanacrochet.com.br>" String
+perguntar ADMIN_URL "Admin path, e.g. painel-x7k2/ (end it with /)" String
 
-echo "Pronto. Parâmetros atuais:"
+echo "Done. Current parameters:"
 aws ssm get-parameters-by-path --region "$regiao" --path "$prefixo" \
   --query "Parameters[].Name" --output text | tr '\t' '\n'

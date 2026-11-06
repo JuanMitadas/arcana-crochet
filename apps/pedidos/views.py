@@ -22,7 +22,7 @@ from .models import Pedido, PedidoItem
 CHAVE_CHECKOUT = "checkout"
 
 
-# --- Sacola ----------------------------------------------------------------
+# --- Bag -------------------------------------------------------------------
 
 
 def _render_sacola(request, carrinho):
@@ -34,7 +34,7 @@ def _render_sacola(request, carrinho):
 
 def sacola(request):
     carrinho = Carrinho(request)
-    carrinho.itens  # noqa: B018 — carrega e ajusta itens sem estoque antes de desenhar
+    carrinho.itens  # noqa: B018 — loads the items and adjusts out-of-stock ones before rendering
     if carrinho.ajustado:
         messages.warning(
             request, "Ajustamos a quantidade de alguns itens conforme o estoque disponível."
@@ -332,7 +332,7 @@ def checkout_revisao(request):
     )
 
 
-# --- Minha conta -----------------------------------------------------------
+# --- My account ------------------------------------------------------------
 
 
 def _itens_com_fotos():
@@ -381,7 +381,7 @@ def pedido_detalhe(request, codigo):
 @login_required
 @require_POST
 def simular_pagamento(request, codigo):
-    """Só em desenvolvimento: aprova o pagamento sem o Asaas, para testar o fluxo."""
+    """Development only: approve the payment without Asaas, to test the flow."""
     if not settings.DEBUG:
         raise Http404
     pedido = get_object_or_404(Pedido, codigo=codigo, cliente=request.user)

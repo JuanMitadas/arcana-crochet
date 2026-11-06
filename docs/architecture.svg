@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1220 830" role="img" aria-labelledby="t"><title id="t">Arcana Crochet AWS architecture</title><defs><linearGradient id="fundo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d1530"/><stop offset="1" stop-color="#241238"/></linearGradient><marker id="ponta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#f2f4f8"/></marker></defs><style>.moldura{fill:none;stroke:#e6e9f0;stroke-width:1.2}.aba{fill:#232f3e}.nuvem{fill:none;stroke:#fff;stroke-width:1.6}.titulo{fill:#fff;font:600 15px Arial,Helvetica,sans-serif}.faixa{fill:rgba(255,255,255,.04);stroke:rgba(255,255,255,.28);stroke-dasharray:6 5}.faixa-rotulo{fill:#c9cfdc;font:600 12px Arial,Helvetica,sans-serif;letter-spacing:.04em}.glifo{fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}.glifo .cheio{fill:#fff;stroke:none}.rotulo{fill:#fff;font:13px Arial,Helvetica,sans-serif}.nota{fill:#b8c0d4;font:italic 11.5px Arial,Helvetica,sans-serif}.seta{fill:none;stroke:#f2f4f8;stroke-width:1.6}.tracejada{stroke-dasharray:5 4;stroke:#b8c0d4}</style><rect width="1220" height="830" fill="url(#fundo)"/><rect class="moldura" x="150" y="30" width="850" height="782" rx="4"/>
+<rect class="aba" x="150" y="30" width="34" height="30"/><path class="nuvem" d="M159 50h16a5 5 0 0 0 0-10 7 7 0 0 0-13-2 5 5 0 0 0-3 12z"/>
+<text class="titulo" x="196" y="51">AWS Cloud</text>
+<rect class="faixa" x="170" y="640" width="810" height="160" rx="10"/>
+<text class="faixa-rotulo" x="184" y="660">Deploy</text>
+<defs><linearGradient id="g0" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3B4A5A"/><stop offset="1" stop-color="#6B7F95"/></linearGradient></defs>
+<rect x="38" y="238" width="64" height="64" fill="url(#g0)" rx="32"/>
+<g class="glifo" transform="translate(38 238)"><circle cx="32" cy="23" r="9"/><path d="M14 50c2-10 9-15 18-15s16 5 18 15"/></g>
+<text class="rotulo" x="70" y="322" text-anchor="middle">Visitor</text>
+<defs><linearGradient id="g1" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3B4A5A"/><stop offset="1" stop-color="#6B7F95"/></linearGradient></defs>
+<rect x="38" y="680" width="64" height="64" fill="url(#g1)" rx="32"/>
+<g class="glifo" transform="translate(38 680)"><circle cx="32" cy="32" r="17"/><path d="M27 23l12 9-12 9z" class="cheio"/></g>
+<text class="rotulo" x="70" y="764" text-anchor="middle">GitHub Actions</text>
+<defs><linearGradient id="g2" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#4D27A8"/><stop offset="1" stop-color="#A166FF"/></linearGradient></defs>
+<rect x="208" y="238" width="64" height="64" fill="url(#g2)"/>
+<g class="glifo" transform="translate(208 238)"><path d="M32 12v40M32 18h15l5 5-5 5H32M32 32H17l-5 5 5 5h15"/></g>
+<text class="rotulo" x="240" y="322" text-anchor="middle">Amazon Route 53</text>
+<defs><linearGradient id="g3" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#4D27A8"/><stop offset="1" stop-color="#A166FF"/></linearGradient></defs>
+<rect x="358" y="238" width="64" height="64" fill="url(#g3)"/>
+<g class="glifo" transform="translate(358 238)"><circle cx="32" cy="32" r="18"/><ellipse cx="32" cy="32" rx="8" ry="18"/><path d="M14 32h36M17 23h30M17 41h30"/></g>
+<text class="rotulo" x="390" y="322" text-anchor="middle">Amazon CloudFront</text>
+<defs><linearGradient id="g4" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#4D27A8"/><stop offset="1" stop-color="#A166FF"/></linearGradient></defs>
+<rect x="508" y="238" width="64" height="64" fill="url(#g4)"/>
+<g class="glifo" transform="translate(508 238)"><path d="M24 14c-6 0-6 6-6 9s-2 9-6 9c4 0 6 6 6 9s0 9 6 9M40 14c6 0 6 6 6 9s2 9 6 9c-4 0-6 6-6 9s0 9-6 9"/><path d="M27 40l10-16M27 24h0"/></g>
+<text class="rotulo" x="540" y="322" text-anchor="middle">CloudFront</text>
+<text class="rotulo" x="540" y="337" text-anchor="middle">Functions</text>
+<defs><linearGradient id="g5" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#C8511B"/><stop offset="1" stop-color="#FF9900"/></linearGradient></defs>
+<rect x="668" y="238" width="64" height="64" fill="url(#g5)"/>
+<g class="glifo" transform="translate(668 238)"><path d="M18 50h8l9-22 8 22h7M24 14h7l14 36"/></g>
+<text class="rotulo" x="700" y="322" text-anchor="middle">AWS Lambda</text>
+<text class="rotulo" x="700" y="337" text-anchor="middle">(Django)</text>
+<defs><linearGradient id="g6" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#B0084D"/><stop offset="1" stop-color="#FF4F8B"/></linearGradient></defs>
+<rect x="668" y="88" width="64" height="64" fill="url(#g6)"/>
+<g class="glifo" transform="translate(668 88)"><rect x="13" y="16" width="38" height="34" rx="4"/><path d="M13 26h38M22 11v9M42 11v9M24 36h4M32 36h4M40 36h4M24 43h4M32 43h4"/></g>
+<text class="rotulo" x="700" y="172" text-anchor="middle">Amazon EventBridge</text>
+<text class="rotulo" x="700" y="187" text-anchor="middle">Scheduler</text>
+<defs><linearGradient id="g7" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#2E27AD"/><stop offset="1" stop-color="#527FFF"/></linearGradient></defs>
+<rect x="668" y="388" width="64" height="64" fill="url(#g7)"/>
+<g class="glifo" transform="translate(668 388)"><ellipse cx="32" cy="18" rx="16" ry="6"/><path d="M16 18v28c0 3 7 6 16 6s16-3 16-6V18M16 32c0 3 7 6 16 6s16-3 16-6"/></g>
+<text class="rotulo" x="700" y="472" text-anchor="middle">Amazon Aurora</text>
+<text class="rotulo" x="700" y="487" text-anchor="middle">DSQL</text>
+<defs><linearGradient id="g8" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#1B660F"/><stop offset="1" stop-color="#6CAE3E"/></linearGradient></defs>
+<rect x="508" y="528" width="64" height="64" fill="url(#g8)"/>
+<g class="glifo" transform="translate(508 528)"><path d="M19 40a15 15 0 1 0-1-14"/><path d="M13 22l5 5 6-4"/><path d="M33 23v10l7 4"/></g>
+<text class="rotulo" x="540" y="612" text-anchor="middle">AWS Backup</text>
+<text class="rotulo" x="540" y="627" text-anchor="middle">(daily, 30 days)</text>
+<defs><linearGradient id="g9" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#BD0816"/><stop offset="1" stop-color="#FF5252"/></linearGradient></defs>
+<rect x="208" y="388" width="64" height="64" fill="url(#g9)"/>
+<g class="glifo" transform="translate(208 388)"><rect x="12" y="15" width="40" height="27" rx="3"/><path d="M19 23h18M19 30h12"/><circle cx="43" cy="38" r="6"/><path d="M40 43l-2 9 5-3 5 3-2-9"/></g>
+<text class="rotulo" x="240" y="472" text-anchor="middle">AWS Certificate</text>
+<text class="rotulo" x="240" y="487" text-anchor="middle">Manager (ACM)</text>
+<defs><linearGradient id="g10" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3F8624"/><stop offset="1" stop-color="#7AA116"/></linearGradient></defs>
+<rect x="208" y="528" width="64" height="64" fill="url(#g10)"/>
+<g class="glifo" transform="translate(208 528)"><circle cx="32" cy="32" r="18"/><path d="M38 24c-2-2-4-3-7-3-4 0-6 2-6 5 0 7 14 4 14 11 0 3-3 5-7 5-3 0-6-1-8-3M32 17v4M32 43v4"/></g>
+<text class="rotulo" x="240" y="612" text-anchor="middle">AWS Budgets</text>
+<defs><linearGradient id="g11" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#1B660F"/><stop offset="1" stop-color="#6CAE3E"/></linearGradient></defs>
+<rect x="508" y="388" width="64" height="64" fill="url(#g11)"/>
+<g class="glifo" transform="translate(508 388)"><ellipse cx="32" cy="19" rx="17" ry="6"/><path d="M15 19l4 27c1 4 6 6 13 6s12-2 13-6l4-27"/></g>
+<text class="rotulo" x="540" y="472" text-anchor="middle">Amazon S3</text>
+<text class="rotulo" x="540" y="487" text-anchor="middle">(photos)</text>
+<defs><linearGradient id="g12" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#B0084D"/><stop offset="1" stop-color="#FF4F8B"/></linearGradient></defs>
+<rect x="828" y="388" width="64" height="64" fill="url(#g12)"/>
+<g class="glifo" transform="translate(828 388)"><circle cx="23" cy="32" r="9"/><path d="M32 32h20M45 32v8M51 32v6"/></g>
+<text class="rotulo" x="860" y="472" text-anchor="middle">SSM Parameter</text>
+<text class="rotulo" x="860" y="487" text-anchor="middle">Store</text>
+<defs><linearGradient id="g13" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#B0084D"/><stop offset="1" stop-color="#FF4F8B"/></linearGradient></defs>
+<rect x="828" y="528" width="64" height="64" fill="url(#g13)"/>
+<g class="glifo" transform="translate(828 528)"><path d="M19 12h19l9 9v31H19z"/><path d="M38 12v9h9M25 30h16M25 37h16M25 44h10"/></g>
+<text class="rotulo" x="860" y="612" text-anchor="middle">Amazon CloudWatch</text>
+<text class="rotulo" x="860" y="627" text-anchor="middle">Logs</text>
+<defs><linearGradient id="g14" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#BD0816"/><stop offset="1" stop-color="#FF5252"/></linearGradient></defs>
+<rect x="208" y="680" width="64" height="64" fill="url(#g14)"/>
+<g class="glifo" transform="translate(208 680)"><path d="M32 12l17 6v12c0 11-7 19-17 22-10-3-17-11-17-22V18z"/><path d="M24 32l6 6 11-12"/></g>
+<text class="rotulo" x="240" y="764" text-anchor="middle">AWS IAM</text>
+<text class="rotulo" x="240" y="779" text-anchor="middle">(OIDC)</text>
+<defs><linearGradient id="g15" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#C8511B"/><stop offset="1" stop-color="#FF9900"/></linearGradient></defs>
+<rect x="358" y="680" width="64" height="64" fill="url(#g15)"/>
+<g class="glifo" transform="translate(358 680)"><path d="M14 22l18-9 18 9v20l-18 9-18-9z"/><path d="M14 22l18 9 18-9M32 31v20M23 17.5l18 9"/></g>
+<text class="rotulo" x="390" y="764" text-anchor="middle">Amazon ECR</text>
+<defs><linearGradient id="g16" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#B0084D"/><stop offset="1" stop-color="#FF4F8B"/></linearGradient></defs>
+<rect x="508" y="680" width="64" height="64" fill="url(#g16)"/>
+<g class="glifo" transform="translate(508 680)"><path d="M32 13l20 10-20 10-20-10z"/><path d="M12 32l20 10 20-10M12 41l20 10 20-10"/></g>
+<text class="rotulo" x="540" y="764" text-anchor="middle">AWS CloudFormation</text>
+<text class="rotulo" x="540" y="779" text-anchor="middle">(SAM)</text>
+<defs><linearGradient id="g17" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3B4A5A"/><stop offset="1" stop-color="#6B7F95"/></linearGradient></defs>
+<rect x="1078" y="88" width="64" height="64" fill="url(#g17)"/>
+<g class="glifo" transform="translate(1078 88)"><rect x="12" y="18" width="40" height="28" rx="3"/><path d="M12 20l20 15 20-15"/></g>
+<text class="rotulo" x="1110" y="172" text-anchor="middle">Resend</text>
+<text class="rotulo" x="1110" y="187" text-anchor="middle">(email)</text>
+<path class="seta" d="M102 270 H204" marker-end="url(#ponta)"/>
+<path class="seta" d="M272 270 H354" marker-end="url(#ponta)"/>
+<path class="seta" d="M422 270 H504" marker-end="url(#ponta)"/>
+<text class="nota" x="465.0" y="262" text-anchor="middle">pages</text>
+<path class="seta" d="M572 270 H664" marker-end="url(#ponta)"/>
+<path class="seta" d="M700 346 V384" marker-end="url(#ponta)"/>
+<text class="nota" x="708" y="370" text-anchor="start">SQL, IAM token</text>
+<path class="seta" d="M700 198 V234" marker-end="url(#ponta)"/>
+<text class="nota" x="708" y="220" text-anchor="start">every 5 min</text>
+<path class="seta" d="M422 290 H460 V420 H504" marker-end="url(#ponta)"/>
+<text class="nota" x="466" y="380" text-anchor="start">/media/*</text>
+<path class="seta" d="M732 290 H780 V420 H824" marker-end="url(#ponta)"/>
+<path class="seta" d="M780 420 V560 H824" marker-end="url(#ponta)"/>
+<path class="seta" d="M732 250 H780 V120 H1074" marker-end="url(#ponta)"/>
+<text class="nota" x="945" y="112" text-anchor="middle">emails (SMTP)</text>
+<path class="seta" d="M668 440 H610 V560 H576" marker-end="url(#ponta)"/>
+<text class="nota" x="616" y="520" text-anchor="start">snapshot</text>
+<path class="seta tracejada" d="M262 386 L364 346" marker-end="url(#ponta)"/>
+<path class="seta" d="M102 712 H204" marker-end="url(#ponta)"/>
+<path class="seta" d="M272 712 H354" marker-end="url(#ponta)"/>
+<text class="nota" x="315.0" y="704" text-anchor="middle">assumes role</text>
+<path class="seta" d="M422 712 H504" marker-end="url(#ponta)"/>
+<text class="nota" x="465.0" y="704" text-anchor="middle">image</text>
+<path class="seta tracejada" d="M572 702 H700 V498" marker-end="url(#ponta)"/>
+<text class="nota" x="708" y="580" text-anchor="start">migrations,</text>
+<text class="nota" x="708" y="595" text-anchor="start">stack update</text></svg>

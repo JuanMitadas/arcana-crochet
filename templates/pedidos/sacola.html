@@ -64,7 +64,7 @@
         <div class="painel p-5 md:p-6">
           <h2 id="titulo-resumo" class="text-2xl">Resumo</h2>
 
-          {# Cupom #}
+          {# Coupon #}
           <form method="post" action="{% url 'pedidos:cupom' %}" hx-post="{% url 'pedidos:cupom' %}" hx-target="#sacola" class="mt-5">
             {% csrf_token %}
             {% if carrinho.cupom_valido %}
@@ -82,7 +82,7 @@
             {% endif %}
           </form>
 
-          {# Frete #}
+          {# Shipping #}
           <form method="post" action="{% url 'pedidos:frete' %}" hx-post="{% url 'pedidos:frete' %}" hx-target="#sacola" hx-trigger="submit, change from:[name=frete]" class="mt-5">
             {% csrf_token %}
             <label for="cep-sacola" class="mb-1 block">Frete</label>

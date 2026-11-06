@@ -1,7 +1,8 @@
-"""Regras de estoque. Nada altera ``ProdutoVariacao.estoque`` fora deste módulo."""
+"""Stock rules. Nothing outside this module changes ``ProdutoVariacao.estoque``."""
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
+
+from apps.core.transacoes import atomico
 
 from .models import MovimentacaoEstoque, Produto, ProdutoVariacao
 
@@ -10,7 +11,7 @@ class EstoqueInsuficiente(ValidationError):
     pass
 
 
-@transaction.atomic
+@atomico
 def registrar_movimentacao(
     variacao: ProdutoVariacao,
     tipo: str,
@@ -18,10 +19,11 @@ def registrar_movimentacao(
     autor=None,
     motivo: str = "",
 ) -> MovimentacaoEstoque:
-    """Aplica uma entrada (quantidade > 0) ou saída (< 0) e grava o histórico.
+    """Apply an incoming (quantity > 0) or outgoing (< 0) movement and record it.
 
-    A linha da variação é travada (SELECT ... FOR UPDATE) para que duas vendas
-    simultâneas da mesma peça única nunca deixem o estoque negativo.
+    The variation row is locked (SELECT ... FOR UPDATE) so two simultaneous sales of
+    the same one-of-a-kind piece never leave the stock negative. On Aurora DSQL the
+    lock becomes an optimistic conflict and ``atomico`` runs the loser again.
     """
     if quantidade == 0:
         raise ValidationError("A quantidade não pode ser zero.")
@@ -50,8 +52,8 @@ def registrar_movimentacao(
 
 
 def atualizar_status_esgotado(produto_id) -> None:
-    """Marca o produto como esgotado quando nenhuma variação ativa tem estoque, e o
-    reativa quando o estoque volta. Rascunhos, pausados e arquivados não mudam."""
+    """Mark the product as sold out when no active variation has stock, and bring it
+    back when stock returns. Drafts, paused and archived products don't change."""
     produto = Produto.objects.select_for_update().get(pk=produto_id)
     tem_estoque = any(v.disponivel > 0 for v in produto.variacoes.filter(ativa=True))
     sob_encomenda = produto.disponibilidade == Produto.Disponibilidade.SOB_ENCOMENDA

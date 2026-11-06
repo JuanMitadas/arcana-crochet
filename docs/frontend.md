@@ -1,107 +1,108 @@
-# Frontend da loja
+# Store frontend
 
-Como a interface da Arcana Crochet está organizada: navegação, telas, componentes e identidade visual.
+How the Arcana Crochet interface is organized: navigation, pages, components and visual identity. The customer-facing text is in Brazilian Portuguese; page and URL names below are the real ones.
 
-## Identidade visual
+## Visual identity
 
-| Token | Cor | Uso |
+| Token | Color | Use |
 | --- | --- | --- |
-| `creme` | `#fbf9e4` | fundo de todas as páginas |
-| `azul` | `#17597c` | botões principais, logo, selo de desconto |
-| `petroleo` | `#034947` | texto, faixa do topo, rodapé |
-| `verde` | `#015d5c` | bloco "Ofertas do dia", preço no Pix |
-| `turquesa` | `#2e7f83` | estrelas, foco, detalhes |
-| `ardosia` | `#195261` | texto secundário |
+| `creme` | `#fbf9e4` | background of every page |
+| `azul` | `#17597c` | main buttons, logo, discount badge |
+| `petroleo` | `#034947` | text, top bar, footer |
+| `verde` | `#015d5c` | "Ofertas do dia" block, Pix price |
+| `turquesa` | `#2e7f83` | stars, focus, details |
+| `ardosia` | `#195261` | secondary text |
 
-- **Tipografia:** Fraunces (títulos, mesma família dos posts da marca) e Montserrat (texto). Ambas auto-hospedadas em `static/fonts/` porque a CSP só aceita fontes do próprio site.
-- **Assinaturas:**
-  - **Ponto concha:** borda recortada em arcos nos blocos coloridos e no rodapé (`.concha-baixo`, `.concha-cima`).
-  - **Portal:** toda foto de produto fica num arco (`.arco`), que se abre um pouco no hover.
-  - **Onda do logo:** o traço sob "crochet" vira divisor de seção (`#i-onda`).
-  - **Selo de desconto:** estrela de quatro pontas, como os brilhos do logo (`.selo-desconto`).
-- **Movimento:** só a entrada da foto do hero e o brilho das estrelinhas. Respeita `prefers-reduced-motion`.
+- **Typography:** Fraunces (headings, same family as the brand's posts) and Montserrat (body). Both are self-hosted in `static/fonts/` because the CSP only allows fonts from the site itself.
+- **Signatures:**
+  - **Shell stitch:** scalloped edge on the colored blocks and the footer (`.concha-baixo`, `.concha-cima`).
+  - **Portal:** every product photo sits in an arch (`.arco`), which opens a little on hover.
+  - **Logo wave:** the stroke under "crochet" becomes a section divider (`#i-onda`).
+  - **Discount badge:** a four-pointed star, like the sparkles in the logo (`.selo-desconto`).
+- **Motion:** only the hero photo entrance and the twinkling stars. Respects `prefers-reduced-motion`.
 
-## Mapa de navegação
+## Navigation map
 
 ```
-Início (/)
-├── Loja: todas as peças (/loja/)  ── filtros, ordenação, paginação
-│   ├── Categoria (/c/<slug>/)     ── com subcategorias
-│   └── Busca (/busca/?q=)         ── ignora acentos, sugere parecidos se não achar nada
-├── Produto (/p/<slug>/)           ── frete rápido (HTMX)
-├── Sacola (/sacola/)              ── quantidade, cupom e frete sem recarregar (HTMX)
+Home (/)
+├── Shop: all pieces (/loja/)        ── filters, sorting, pagination
+│   ├── Category (/c/<slug>/)        ── with subcategories
+│   └── Search (/busca/?q=)          ── ignores accents, suggests similar pieces when nothing matches
+├── Product (/p/<slug>/)             ── quick shipping quote (HTMX)
+├── Bag (/sacola/)                   ── quantity, coupon and shipping without reloading (HTMX)
 ├── Checkout
-│   ├── 1. Identificação (/checkout/identificacao/)  ── só para quem não está logado
-│   ├── 2. Entrega (/checkout/entrega/)
-│   ├── 3. Pagamento (/checkout/pagamento/)
-│   └── 4. Revisão (/checkout/revisao/)  ── cria o pedido
-├── Minha conta (/minha-conta/)    ── pedidos
-│   ├── Pedido (/minha-conta/pedidos/<código>/)  ── linha do tempo e rastreio
-│   ├── Endereços (/minha-conta/enderecos/)
-│   └── Avaliar peça (/minha-conta/avaliar/<item>/)  ── só após a entrega
-└── Conta (allauth): entrar, criar conta, código por e-mail, senha, 2FA (/conta/...)
+│   ├── 1. Sign in (/checkout/identificacao/)  ── only for visitors who aren't logged in
+│   ├── 2. Delivery (/checkout/entrega/)
+│   ├── 3. Payment (/checkout/pagamento/)
+│   └── 4. Review (/checkout/revisao/)  ── creates the order
+├── My account (/minha-conta/)       ── orders
+│   ├── Order (/minha-conta/pedidos/<code>/)  ── timeline and tracking
+│   ├── Addresses (/minha-conta/enderecos/)
+│   └── Review a piece (/minha-conta/avaliar/<item>/)  ── only after delivery
+└── Account (allauth): log in, sign up, email code, password, 2FA (/conta/...)
 ```
 
-## Telas
+## Pages
 
-### 1. Página inicial (`catalogo/home.html`)
-1. **Faixa de vantagens:** desconto no Pix, parcelas sem juros, frete grátis (valores vêm de `settings.LOJA`).
-2. **Cabeçalho fixo:** logo, **busca em destaque** no centro (ocupa a linha inteira no celular), conta e sacola com contador.
-3. **Menu de categorias:** categorias com subcategorias abrem um painel; no celular, gaveta lateral.
-4. **Hero:** bloco azul com borda de concha, foto das cestas num portal.
-5. **Banners promocionais:** Ofertas da semana, Sob encomenda, Frete grátis.
-6. **Categorias** em arcos.
-7. **Carrosséis:** "Escolhidas pela Kamilly" (destaques), "Ofertas do dia" (bloco verde), novidades e mais vendidas.
-8. **Quem está por trás** (Kamilly) e **Por que Arcana**.
-9. **Rodapé:** links, atendimento, formas de pagamento e selos (site seguro, pagamento pelo Asaas, 7 dias para trocar).
+### 1. Home (`catalogo/home.html`)
+1. **Perks bar:** Pix discount, interest-free installments, free shipping (values come from `settings.LOJA`).
+2. **Sticky header:** logo, **prominent search** in the middle (full width on phones), account and bag with a counter.
+3. **Category menu:** categories with subcategories open a panel; on phones, a side drawer.
+4. **Hero:** blue block with a shell-stitch edge, photo of the baskets in a portal.
+5. **Promotional banners:** weekly deals, made to order, free shipping.
+6. **Categories** in arches.
+7. **Carousels:** "Escolhidas pela Kamilly" (featured), "Ofertas do dia" (green block), new arrivals and best sellers.
+8. **Who's behind it** (Kamilly) and **Why Arcana**.
+9. **Footer:** links, customer service, payment methods and badges (secure site, payments by Asaas, 7 days to return).
 
-### 2. Categoria, busca e listagem (`catalogo/listagem.html`)
-- **Filtros laterais** (gaveta "Filtrar" no celular): faixa de preço (atalhos + mínimo/máximo), cor (com amostra), tamanho, material, disponibilidade (pronta entrega / sob encomenda) e "só promoção". Cada opção mostra quantas peças tem.
-- Por ser uma loja de uma marca só, **"marca" vira "material"** e as especificações viram cor/tamanho.
-- **Ordenação:** relevância, mais vendidos, menor/maior preço, novidades, mais bem avaliados.
-- Filtros e ordenação trocam só a grade (HTMX) e atualizam a URL; sem JavaScript, o formulário envia normalmente.
-- **Card:** foto em arco, selo de desconto, etiqueta "Sob encomenda"/"Esgotado", nota, preço "de/por", preço no Pix e parcelamento.
+### 2. Category, search and listing (`catalogo/listagem.html`)
+- **Side filters** ("Filtrar" drawer on phones): price range (shortcuts + min/max), color (with swatch), size, material, availability (ready to ship / made to order) and "on sale only". Each option shows how many pieces it has.
+- Since it's a single-brand store, **"brand" becomes "material"** and the specs become color/size.
+- **Sorting:** relevance, best sellers, lowest/highest price, newest, best rated.
+- Filters and sorting swap only the grid (HTMX) and update the URL; without JavaScript the form submits normally.
+- **Search** matches name, description, material, category and colors without accents (the `Produto.busca` column); with no results it suggests pieces with a similar name (typos like "urço").
+- **Card:** photo in an arch, discount badge, "Sob encomenda"/"Esgotado" tag, rating, was/now price, Pix price and installments.
 
-### 3. Página do produto (`catalogo/produto.html`)
-- **Galeria** com miniaturas, deslizar no celular e vídeo opcional (`Produto.video`).
-- **Seletor de variação:** amostras de cor e botões de tamanho; combinações sem estoque ficam riscadas. Sem JavaScript, vira um `<select>`.
-- **Caixa de compra:** preço no Pix em destaque, preço no cartão com parcelas, lista de parcelas, aviso de estoque ("Peça única", "Últimas 2") ou prazo de produção, quantidade, "Adicionar à sacola" e "Comprar agora".
-- **Frete rápido** por CEP (PAC e SEDEX com prazo).
-- **Ficha técnica** (`ProdutoEspecificacao` + dados do produto), cuidados com a peça.
-- **Avaliações:** média, distribuição por estrelas, "Compra verificada" e resposta da loja.
+### 3. Product page (`catalogo/produto.html`)
+- **Gallery** with thumbnails, swipe on phones and an optional video (`Produto.video`).
+- **Variation picker:** color swatches and size buttons; combinations without stock are struck through. Without JavaScript it becomes a `<select>`.
+- **Buy box:** Pix price highlighted, card price with installments, installment list, stock notice ("Peça única", "Últimas 2") or production time, quantity, "Adicionar à sacola" and "Comprar agora".
+- **Quick shipping quote** by CEP (PAC and SEDEX with delivery time).
+- **Spec sheet** (`ProdutoEspecificacao` + product data) and care instructions.
+- **Reviews:** average, distribution by stars, "Compra verificada" and the store's reply.
 
-### 4. Sacola e checkout (`pedidos/sacola.html`, `pedidos/checkout/*`)
-- **Sacola:** barra de progresso até o frete grátis, quantidade com +/−, remover, cupom, CEP com escolha de PAC/SEDEX, total no Pix e no cartão.
-- **Checkout em 4 etapas** com cabeçalho enxuto (sem menu, para não distrair) e resumo do pedido sempre visível:
-  1. **Identificação:** entrar com senha, **entrar com código por e-mail** (sem senha) ou criar conta. Voltam direto para a entrega.
-  2. **Entrega:** endereços salvos em cartões ou novo endereço com **preenchimento automático pelo CEP (ViaCEP)**; o frete recalcula ao trocar de endereço.
-  3. **Pagamento:** Pix (com a economia em destaque) ou cartão com parcelas. Os dados do cartão serão digitados no ambiente do Asaas.
-  4. **Revisão:** confirmação de tudo com links para alterar, recado para a Kamilly e aceite da política de trocas.
+### 4. Bag and checkout (`pedidos/sacola.html`, `pedidos/checkout/*`)
+- **Bag:** progress bar to free shipping, quantity with +/−, remove, coupon, CEP with PAC/SEDEX choice, total for Pix and card.
+- **4-step checkout** with a slim header (no menu, to avoid distractions) and the order summary always visible:
+  1. **Sign in:** log in with a password, **log in with an email code** (no password) or sign up. All of them return straight to delivery.
+  2. **Delivery:** saved addresses as cards or a new address **filled in from the CEP (ViaCEP)**; shipping is recalculated when the address changes.
+  3. **Payment:** Pix (with the savings highlighted) or card with installments. Card details will be typed in Asaas's environment.
+  4. **Review:** everything confirmed with links to change it, a note to Kamilly and acceptance of the returns policy.
 
-### 5. Acompanhamento do pedido (`pedidos/conta/pedido.html`)
-- **Linha do tempo:** Pagamento aprovado → Em separação → Enviado → Entregue, com data e hora de cada etapa.
-- Caixa com o que acontece agora: instruções de Pix, aviso de produção, **código de rastreio com botão copiar** e link de rastreamento, ou convite para avaliar.
-- Itens, valores, forma de pagamento e endereço de entrega.
+### 5. Order tracking (`pedidos/conta/pedido.html`)
+- **Timeline:** Payment approved → Being prepared → Shipped → Delivered, with the date and time of each step.
+- A box with what happens now: Pix instructions, production notice, **tracking code with a copy button** and tracking link, or an invitation to review.
+- Items, amounts, payment method and shipping address.
 
-## Regras de negócio na interface
+## Business rules in the interface
 
-| Regra | Onde fica |
+| Rule | Where it lives |
 | --- | --- |
-| Desconto no Pix, parcelas sem juros, parcela mínima, frete grátis | `settings.LOJA` e `apps/core/precos.py` (o JS da página do produto repete a mesma conta) |
-| Frete estimado por região do CEP | `apps/pedidos/frete.py` (troca pelo Melhor Envio sem mudar as telas) |
-| Reserva de estoque ao criar o pedido | `apps/pedidos/servicos.py` |
-| Avaliação só depois da entrega, com moderação | `apps/pedidos/views.avaliar` e painel de avaliações |
+| Pix discount, interest-free installments, minimum installment, free shipping | `settings.LOJA` and `apps/core/precos.py` (the product page JS repeats the same math) |
+| Shipping estimated by the CEP's region | `apps/pedidos/frete.py` (swapped for Melhor Envio without changing the pages) |
+| Stock reservation when the order is created | `apps/pedidos/servicos.py` |
+| Reviews only after delivery, with moderation | `apps/pedidos/views.avaliar` and the reviews admin |
 
-## Desenvolvimento
+## Development
 
 ```bash
-npm install            # uma vez (Node 20+)
-npm run watch:css      # recompila o CSS enquanto você edita templates
-npm run build:css      # gera static/css/app.css minificado (versionado no git)
-python manage.py popular_demo   # peças, pedidos e avaliações de exemplo
+npm install            # once (Node 20+)
+npm run watch:css      # rebuilds the CSS while you edit templates
+npm run build:css      # writes the minified static/css/app.css (committed to git)
+python manage.py popular_demo   # demo pieces, orders and reviews
 ```
 
-- O CSS compilado é versionado para o Docker não precisar de Node. **Rode `npm run build:css` antes de commitar** mudanças em templates ou em `frontend/app.css`.
-- Sem CSS ou JS inline: a Content-Security-Policy bloqueia. Cores dinâmicas (amostras de cor) usam o atributo `fill` de SVG.
-- `static/js/loja.js` é só melhoria progressiva: todas as telas funcionam sem JavaScript.
-- Cliente de teste criada pelo `popular_demo`: `cliente@arcana.test` / `arcana-demo-123`. Em `DEBUG`, o pedido tem o botão "Simular pagamento aprovado".
+- The compiled CSS is committed so Docker doesn't need Node. **Run `npm run build:css` before committing** changes to templates, `frontend/app.css` or Python/JS files that carry CSS classes.
+- No inline CSS or JS: the Content-Security-Policy blocks it. Dynamic colors (color swatches) use the SVG `fill` attribute.
+- `static/js/loja.js` is progressive enhancement only: every page works without JavaScript.
+- Test customer created by `popular_demo`: `cliente@arcana.test` / `arcana-demo-123`. With `DEBUG`, the order page has a "Simular pagamento aprovado" button.

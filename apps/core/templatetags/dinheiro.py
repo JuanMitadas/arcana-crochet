@@ -5,7 +5,7 @@ register = template.Library()
 
 @register.filter
 def brl(centavos):
-    """Formata centavos como moeda brasileira: 123456 -> "R$ 1.234,56"."""
+    """Format cents as Brazilian currency: 123456 -> "R$ 1.234,56"."""
     if centavos is None or centavos == "":
         return ""
     centavos = int(centavos)

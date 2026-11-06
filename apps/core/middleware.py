@@ -3,18 +3,18 @@ import hmac
 from django.conf import settings
 from django.http import HttpResponseForbidden
 
-# O ping de aquecimento e o readiness check do Lambda Web Adapter chamam este
-# caminho direto, sem passar pelo CloudFront.
+# The warm-up ping and the Lambda Web Adapter readiness check call this path
+# directly, without going through CloudFront.
 CAMINHOS_LIVRES = ("/healthz/",)
 
 
 class OrigemCloudFrontMiddleware:
-    """Recusa pedidos que não vieram pelo CloudFront.
+    """Reject requests that didn't come through CloudFront.
 
-    A URL da Lambda é pública. Sem esta checagem, alguém poderia chamá-la direto e
-    contornar o CloudFront (cache, HTTPS do domínio, cabeçalho com o IP real). O
-    CloudFront envia o cabeçalho X-Arcana-Origem com um segredo que só ele conhece.
-    Desligado quando ORIGEM_SEGREDO está vazio (desenvolvimento e testes).
+    The Lambda URL is public. Without this check, someone could call it directly and
+    bypass CloudFront (cache, the domain's HTTPS, the real-IP header). CloudFront
+    sends the X-Arcana-Origem header with a secret only it knows. Disabled when
+    ORIGEM_SEGREDO is empty (development and tests).
     """
 
     def __init__(self, get_response):

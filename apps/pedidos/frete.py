@@ -1,9 +1,9 @@
-"""Cálculo de frete.
+"""Shipping quotes.
 
-Enquanto a integração com o Melhor Envio não entra, o frete é estimado por uma
-tabela por região do CEP de destino, a partir de Cotia/SP. A interface
-(``cotar(cep, itens)`` devolvendo uma lista de ``OpcaoFrete``) é a mesma que a
-cotação real vai usar, então as telas não mudam quando ela chegar.
+Until the Melhor Envio integration lands, shipping is estimated from a table by the
+destination CEP's region, starting from Cotia/SP. The interface (``cotar(cep, itens)``
+returning a list of ``OpcaoFrete``) is the one the real quote will use, so the pages
+don't change when it arrives.
 """
 
 from dataclasses import dataclass
@@ -13,8 +13,8 @@ from django.conf import settings
 
 EMBALAGEM_G = 120
 
-# (região, PAC base, PAC por kg extra, prazo PAC, SEDEX base, SEDEX por kg extra, prazo SEDEX)
-# Valores em centavos, prazos em dias úteis. Primeiro dígito do CEP define a região.
+# (region, PAC base, PAC per extra kg, PAC days, SEDEX base, SEDEX per extra kg, SEDEX days)
+# Amounts in cents, lead times in business days. The CEP's first digit sets the region.
 TABELA = {
     "0": ("São Paulo capital e região", 1890, 350, 4, 2690, 600, 1),
     "1": ("Interior de São Paulo", 2190, 400, 5, 3190, 700, 2),
@@ -57,8 +57,8 @@ def regiao(cep: str) -> str:
 
 
 def cotar(cep: str, peso_total_g: int, subtotal_centavos: int, prazo_extra_dias: int = 0):
-    """Opções de entrega para o CEP. ``prazo_extra_dias`` soma o tempo de produção
-    de peças sob encomenda. Levanta ValueError para CEP inválido."""
+    """Delivery options for the CEP. ``prazo_extra_dias`` adds the production time of
+    made-to-order pieces. Raises ValueError for an invalid CEP."""
     cep = limpar_cep(cep)
     if len(cep) != 8:
         raise ValueError("Digite um CEP com 8 números.")

@@ -9,7 +9,7 @@ register = template.Library()
 
 @register.filter
 def pix(centavos):
-    """Preço no Pix formatado: {{ produto.preco_atual_centavos|pix }}"""
+    """Formatted Pix price: {{ produto.preco_atual_centavos|pix }}"""
     if centavos in (None, ""):
         return ""
     return brl(precos.preco_pix(int(centavos)))
@@ -17,7 +17,7 @@ def pix(centavos):
 
 @register.filter
 def parcelas(centavos):
-    """Texto do parcelamento: "3x de R$ 43,30 sem juros"."""
+    """Installment text: "3x de R$ 43,30 sem juros"."""
     if centavos in (None, ""):
         return ""
     p = precos.parcelamento(int(centavos))
@@ -33,7 +33,7 @@ def desconto_pct(produto):
 
 @register.inclusion_tag("componentes/estrelas.html")
 def estrelas(nota, tamanho="sm", total=None):
-    """Mostra a nota (0 a 5) em estrelas cheias, meias e vazias."""
+    """Show the rating (0 to 5) as full, half and empty stars."""
     nota = float(nota or 0)
     meias = round(nota * 2)
     cheias, meia = divmod(meias, 2)
@@ -49,7 +49,7 @@ def estrelas(nota, tamanho="sm", total=None):
 
 @register.simple_tag(takes_context=True)
 def url_com(context, **mudancas):
-    """Mantém os filtros da URL atual trocando só alguns parâmetros."""
+    """Keep the current URL's filters, changing only some parameters."""
     params = context["request"].GET.copy()
     for chave, valor in mudancas.items():
         if valor in (None, ""):
@@ -85,7 +85,7 @@ def telefone(valor):
 
 @register.filter
 def foto_principal(produto):
-    """Primeira foto (usa o prefetch, sem nova consulta)."""
+    """First photo (uses the prefetch, no extra query)."""
     fotos = list(produto.fotos.all())
     return fotos[0] if fotos else None
 

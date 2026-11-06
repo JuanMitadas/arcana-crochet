@@ -3,7 +3,7 @@
 
 {% block content %}
   {% url 'catalogo:vitrine' as url_vitrine %}
-  {# Hero: a primeira coisa que se vê é a peça na mão, contra o céu #}
+  {# Hero: the first thing you see is the piece in a hand, against the sky #}
   <section class="container-loja pt-6 md:pt-8" aria-labelledby="hero-titulo">
     <div class="bloco bloco-azul concha-baixo relative px-6 pt-10 pb-12 md:px-14 md:pt-14 md:pb-16">
       <div class="grid items-center gap-10 md:grid-cols-[1.1fr_1fr]">
@@ -28,7 +28,7 @@
     </div>
   </section>
 
-  {# Banners promocionais #}
+  {# Promotional banners #}
   <section class="container-loja mt-16" aria-label="Destaques da loja">
     <ul class="grid gap-4 md:grid-cols-3">
       <li>
@@ -63,7 +63,7 @@
     </ul>
   </section>
 
-  {# Categorias #}
+  {# Categories #}
   {% if categorias_home %}
   <section class="container-loja mt-20" aria-labelledby="titulo-categorias">
     <div class="mb-8 text-center">
@@ -93,7 +93,7 @@
   </div>
   {% endif %}
 
-  {# Ofertas do dia em bloco colorido, com acabamento de concha em cima e embaixo #}
+  {# Daily deals in a colored block, with a shell-stitch edge above and below #}
   {% if ofertas %}
   <section class="mt-24" aria-label="Ofertas">
     <div class="bloco-verde concha-cima concha-baixo py-14 md:py-16">
@@ -116,7 +116,7 @@
   </div>
   {% endif %}
 
-  {# Quem está por trás #}
+  {# Who's behind it #}
   <section id="quem-faz" class="container-loja mt-24 scroll-mt-32" aria-labelledby="titulo-quem">
     <div class="grid items-center gap-10 md:grid-cols-[minmax(0,22rem)_1fr] md:gap-16">
       <div class="relative mx-auto w-full max-w-[20rem] md:max-w-none">
@@ -138,7 +138,7 @@
     </div>
   </section>
 
-  {# Significado do nome #}
+  {# What the name means #}
   <section class="container-loja mt-24" aria-labelledby="titulo-significado">
     <div class="relative overflow-hidden rounded-[var(--radius-bloco)] bg-azul px-6 py-12 text-creme md:px-16 md:py-16">
       <img src="{% static 'img/marca/simbolo-creme.png' %}" alt="" width="360" height="355" loading="lazy" class="pointer-events-none absolute -right-10 -bottom-12 w-64 opacity-10 md:w-80">

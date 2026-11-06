@@ -1,22 +1,22 @@
-"""Carrega segredos do AWS SSM Parameter Store para o ambiente.
+"""Load secrets from AWS SSM Parameter Store into the environment.
 
-Na Lambda, a variável AWS_SSM_PREFIX (ex.: /arcana/prod/) aponta para uma pasta de
-parâmetros. Cada parâmetro vira uma variável de ambiente com o nome do último
-trecho do caminho: /arcana/prod/SECRET_KEY → SECRET_KEY.
+On Lambda, AWS_SSM_PREFIX (e.g. /arcana/prod/) points to a folder of parameters.
+Each parameter becomes an environment variable named after the last part of its
+path: /arcana/prod/SECRET_KEY → SECRET_KEY.
 
-Variáveis já definidas no ambiente têm prioridade, e o carregamento acontece uma
-vez por instância (no cold start), antes de o settings ler as variáveis.
+Variables already set in the environment win, and loading happens once per instance
+(at cold start), before the settings read the variables.
 """
 
 import os
 
 
 def carregar_parametros(prefixo: str, cliente=None) -> list[str]:
-    """Copia os parâmetros do prefixo para os.environ. Devolve os nomes carregados."""
+    """Copy the prefix's parameters into os.environ. Return the names loaded."""
     if not prefixo:
         return []
     if cliente is None:
-        import boto3  # importado só na Lambda: não pesa no desenvolvimento
+        import boto3  # imported only on Lambda: no cost in development
 
         cliente = boto3.client("ssm")
     prefixo = "/" + prefixo.strip("/") + "/"

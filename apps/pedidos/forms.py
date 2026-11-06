@@ -7,7 +7,7 @@ from .frete import limpar_cep
 
 
 class EnderecoForm(forms.ModelForm):
-    # Aceita o CEP com hífen (9 caracteres); clean_cep guarda só os 8 números.
+    # Accepts the CEP with a hyphen (9 characters); clean_cep keeps only the 8 digits.
     cep = forms.CharField(
         label="CEP",
         max_length=9,

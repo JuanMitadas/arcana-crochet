@@ -7,7 +7,7 @@ on:
     branches: [dev, main]
 
 jobs:
-  testes:
+  tests:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -16,6 +16,8 @@ jobs:
           POSTGRES_DB: arcana
           POSTGRES_USER: arcana
           POSTGRES_PASSWORD: arcana
+          # The DSQL rehearsal below sends an IAM token as the password.
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U arcana"
@@ -23,7 +25,7 @@ jobs:
           --health-retries 10
 
     env:
-      SECRET_KEY: ci-somente-para-testes
+      SECRET_KEY: ci-only-for-tests
       DEBUG: "1"
       DATABASE_URL: postgres://arcana:arcana@localhost:5432/arcana
 
@@ -36,36 +38,52 @@ jobs:
           cache: pip
           cache-dependency-path: requirements/*.txt
 
-      - name: Instalar dependências
+      - name: Install dependencies
         run: pip install -r requirements/dev.txt
 
-      - name: Lint e formatação
+      - name: Lint and formatting
         run: |
           ruff check .
           ruff format --check .
 
-      - name: Scripts de shell
+      - name: Shell scripts
         run: shellcheck infra/*.sh docker/entrypoint.sh
 
-      - name: Templates da AWS (SAM/CloudFormation)
+      - name: AWS templates (SAM/CloudFormation)
         run: cfn-lint infra/*.yaml
 
-      - name: Checagem de produção
+      - name: Production check
         env:
           DEBUG: "0"
-          SECRET_KEY: ci-uma-chave-longa-so-para-a-checagem-de-producao-0123456789
+          SECRET_KEY: ci-a-long-key-only-for-the-production-check-0123456789abcdef
           ALLOWED_HOSTS: "*"
-          EMAIL_URL: smtp+tls://usuario:senha@smtp.exemplo.com:587
-          ORIGEM_SEGREDO: ci-segredo
+          EMAIL_URL: smtp+tls://user:password@smtp.example.com:587
+          ORIGEM_SEGREDO: ci-secret
         run: |
           python manage.py collectstatic --noinput -v 0
           python manage.py check --deploy --fail-level WARNING
 
-      - name: Migrações pendentes
+      - name: Pending migrations
         run: python manage.py makemigrations --check --dry-run
 
-      - name: Testes
+      - name: Migrations on Aurora DSQL (rehearsal + dsql-lint)
+        # Runs every migration through the DSQL engine against a scratch PostgreSQL
+        # and checks each statement with AWS's DSQL linter.
+        env:
+          DSQL_ENDPOINT: ensaio.dsql.us-east-1.on.aws
+          DSQL_USER: arcana
+          DSQL_DBNAME: ensaio
+          DSQL_SSLMODE: disable
+          AWS_ACCESS_KEY_ID: ci-not-a-real-key
+          AWS_SECRET_ACCESS_KEY: ci-not-a-real-secret
+        run: |
+          echo "127.0.0.1 $DSQL_ENDPOINT" | sudo tee -a /etc/hosts
+          createdb -h localhost -U arcana ensaio
+          python manage.py ensaio_dsql > dsql.sql
+          dsql-lint dsql.sql
+
+      - name: Tests
         run: python -m pytest
 
-      - name: Vulnerabilidades nas dependências
+      - name: Dependency vulnerabilities
         run: pip-audit -r requirements/base.txt

@@ -1,6 +1,6 @@
-"""Geração de UUID v7 (RFC 9562): ordenável pelo tempo e sem revelar volume.
+"""UUID v7 generation (RFC 9562): sortable by time without revealing volume.
 
-A partir do Python 3.14 usamos o ``uuid.uuid7`` da biblioteca padrão.
+From Python 3.14 on, the standard library's ``uuid.uuid7`` is used.
 """
 
 import os
@@ -14,9 +14,9 @@ def _uuid7_fallback() -> uuid.UUID:
     rand_a = aleatorio >> 68  # 12 bits
     rand_b = aleatorio & ((1 << 62) - 1)  # 62 bits
     valor = (timestamp_ms & ((1 << 48) - 1)) << 80
-    valor |= 0x7 << 76  # versão 7
+    valor |= 0x7 << 76  # version 7
     valor |= rand_a << 64
-    valor |= 0b10 << 62  # variante RFC 9562
+    valor |= 0b10 << 62  # RFC 9562 variant
     valor |= rand_b
     return uuid.UUID(int=valor)
 

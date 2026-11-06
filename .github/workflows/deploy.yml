@@ -1,15 +1,16 @@
-name: Deploy na AWS
+name: Deploy to AWS
 
-# Publica a loja a cada push na main (produção) ou quando rodado à mão.
-# Configuração (uma vez) em docs/deploy.md: environment "producao" no GitHub com os
-# secrets AWS_ROLE_ARN e DATABASE_URL_DIRETA e as variáveis DOMINIO e CERTIFICADO_ARN.
+# Publishes the store on every push to main (production) or when run by hand.
+# One-time setup in docs/deploy.md: a "producao" environment on GitHub with the
+# AWS_ROLE_ARN secret and the DOMINIO and CERTIFICADO_ARN variables (BANCO_RESTAURADO
+# only after restoring the database from a backup).
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
 permissions:
-  id-token: write # para assumir o papel na AWS via OIDC, sem chave guardada
+  id-token: write # to assume the AWS role through OIDC, with no stored key
   contents: read
 
 concurrency:
@@ -24,7 +25,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: producao
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
 
@@ -43,28 +44,50 @@ jobs:
         with:
           use-installer: true
 
-      - name: Montar a imagem da Lambda
+      - name: Install dependencies
+        run: pip install -r requirements/base.txt
+
+      - name: Build the Lambda image
         run: sam build --template-file infra/template.yaml
 
-      - name: Aplicar migrações no Neon
+      # Migrations run before the new code goes live. On the very first deploy the
+      # database doesn't exist yet, so they run right after the stack is created.
+      - name: Find the database
+        id: banco
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_DIRETA }}
-          SECRET_KEY: so-para-as-migracoes-${{ github.run_id }}
+          BANCO_RESTAURADO: ${{ vars.BANCO_RESTAURADO }}
         run: |
-          pip install -r requirements/base.txt
-          python manage.py migrate --noinput
-          python manage.py createcachetable
+          if [ -n "$BANCO_RESTAURADO" ]; then
+            endpoint="$BANCO_RESTAURADO.dsql.$AWS_REGION.on.aws"
+          else
+            endpoint=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+              --query "Stacks[0].Outputs[?OutputKey=='BancoEndpoint'].OutputValue" \
+              --output text 2>/dev/null || true)
+          fi
+          if [ "$endpoint" = "None" ]; then endpoint=""; fi
+          echo "endpoint=$endpoint" >> "$GITHUB_OUTPUT"
 
-      - name: Publicar
+      - name: Apply migrations (Aurora DSQL)
+        if: steps.banco.outputs.endpoint != ''
+        env:
+          DSQL_ENDPOINT: ${{ steps.banco.outputs.endpoint }}
+          SECRET_KEY: only-for-migrations-${{ github.run_id }}
+        run: python manage.py migrate --noinput
+
+      - name: Publish
         env:
           DOMINIO: ${{ vars.DOMINIO }}
           CERTIFICADO_ARN: ${{ vars.CERTIFICADO_ARN }}
+          BANCO_RESTAURADO: ${{ vars.BANCO_RESTAURADO }}
         run: |
           repositorio=$(aws cloudformation describe-stacks --stack-name arcana-base \
             --query "Stacks[0].Outputs[?OutputKey=='RepositorioImagens'].OutputValue" --output text)
           parametros=("Ambiente=prod")
           if [ -n "$DOMINIO" ]; then
             parametros+=("Dominio=$DOMINIO" "CertificadoArn=$CERTIFICADO_ARN")
+          fi
+          if [ -n "$BANCO_RESTAURADO" ]; then
+            parametros+=("BancoRestaurado=$BANCO_RESTAURADO")
           fi
           sam deploy \
             --stack-name "$STACK" \
@@ -76,9 +99,19 @@ jobs:
             --no-fail-on-empty-changeset \
             --parameter-overrides "${parametros[@]}"
 
-      - name: Resumo
+      - name: Apply migrations (first deploy)
+        if: steps.banco.outputs.endpoint == ''
+        env:
+          SECRET_KEY: only-for-migrations-${{ github.run_id }}
+        run: |
+          DSQL_ENDPOINT=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query "Stacks[0].Outputs[?OutputKey=='BancoEndpoint'].OutputValue" --output text)
+          export DSQL_ENDPOINT
+          python manage.py migrate --noinput
+
+      - name: Summary
         run: |
           endereco=$(aws cloudformation describe-stacks --stack-name "$STACK" \
             --query "Stacks[0].Outputs[?OutputKey=='EnderecoSite'].OutputValue" --output text)
-          echo "### Loja publicada: $endereco" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Store published: $endereco" >> "$GITHUB_STEP_SUMMARY"
           curl -fsS --retry 5 --retry-delay 5 "$endereco/healthz/?banco=1"

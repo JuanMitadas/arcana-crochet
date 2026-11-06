@@ -5,3 +5,4 @@ factory-boy==3.3.3
 ruff==0.17.3
 pip-audit==2.10.1
 cfn-lint==1.59.0
+dsql-lint==0.2.22

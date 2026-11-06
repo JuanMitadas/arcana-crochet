@@ -6,6 +6,7 @@ from django.db.models.functions import Coalesce
 from django.urls import reverse
 
 from apps.core.models import ModeloBase
+from apps.core.texto import normalizar
 
 
 class Categoria(ModeloBase):
@@ -37,14 +38,14 @@ class Categoria(ModeloBase):
 
 class ProdutoQuerySet(models.QuerySet):
     def visiveis(self):
-        """Produtos que aparecem na vitrine."""
+        """Products shown in the storefront."""
         return self.filter(status__in=[Produto.Status.ATIVO, Produto.Status.ESGOTADO])
 
     def com_metricas(self):
-        """Anota preço efetivo, nota média, nº de avaliações e unidades vendidas.
+        """Annotate effective price, average rating, review count and units sold.
 
-        Usa subconsultas (e não JOIN + agregação) para que os números não se
-        multipliquem quando a consulta também filtra por variações."""
+        Uses subqueries (not JOIN + aggregation) so the numbers don't multiply when
+        the query also filters by variations."""
         from apps.avaliacoes.models import Avaliacao
         from apps.pedidos.models import Pedido, PedidoItem
 
@@ -119,6 +120,9 @@ class Produto(ModeloBase):
     destaque = models.BooleanField(default=False, help_text="Aparece na página inicial.")
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.RASCUNHO)
     publicado_em = models.DateTimeField("publicado em", null=True, blank=True)
+    # Name, description, material, category and colors, lowercase and without accents.
+    # Kept up to date by save() and by the signals in signals.py.
+    busca = models.TextField(editable=False, blank=True, default="")
 
     objects = ProdutoQuerySet.as_manager()
 
@@ -151,6 +155,28 @@ class Produto(ModeloBase):
 
     def get_absolute_url(self):
         return reverse("catalogo:produto", kwargs={"slug": self.slug})
+
+    def texto_busca(self) -> str:
+        partes = [self.nome, self.descricao, self.material]
+        if self.categoria_id:
+            categoria = Categoria.objects.select_related("pai").get(pk=self.categoria_id)
+            partes += [categoria.nome, categoria.pai.nome if categoria.pai_id else ""]
+        if self.pk and not self._state.adding:
+            partes += ProdutoVariacao.objects.filter(produto_id=self.pk).values_list(
+                "cor", flat=True
+            )
+        return normalizar(" ".join(filter(None, partes)))
+
+    def save(self, *args, **kwargs):
+        self.busca = self.texto_busca()
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and "busca" not in update_fields:
+            kwargs["update_fields"] = {*update_fields, "busca"}
+        super().save(*args, **kwargs)
+
+    def atualizar_busca(self) -> None:
+        """Recompute the search column without touching the other fields."""
+        Produto.objects.filter(pk=self.pk).update(busca=self.texto_busca())
 
     @property
     def preco_atual_centavos(self) -> int:
@@ -208,7 +234,7 @@ class ProdutoVariacao(ModeloBase):
 
 
 class ProdutoEspecificacao(models.Model):
-    """Linha da ficha técnica, ex.: "Altura" = "18 cm"."""
+    """One row of the spec sheet, e.g. "Altura" = "18 cm"."""
 
     produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name="especificacoes")
     nome = models.CharField(max_length=60)
@@ -260,7 +286,7 @@ class ProdutoFoto(ModeloBase):
 
 
 class MovimentacaoEstoque(ModeloBase):
-    """Toda mudança de estoque passa por aqui. Use ``registrar_movimentacao``."""
+    """Every stock change goes through here. Use ``registrar_movimentacao``."""
 
     class Tipo(models.TextChoices):
         ENTRADA_PRODUCAO = "entrada_producao", "Entrada de produção"

@@ -1,11 +1,11 @@
-"""Popula a loja com dados de demonstração (só para desenvolvimento).
+"""Fill the store with demo data (development only).
 
-    python manage.py popular_demo            # cria se ainda não existir
-    python manage.py popular_demo --limpar   # apaga os dados de demo e recria
+    python manage.py popular_demo            # creates it if it doesn't exist yet
+    python manage.py popular_demo --limpar   # deletes the demo data and recreates it
 
-Cria categorias, peças com ilustrações geradas, estoque, cupons, uma cliente de
-teste (cliente@arcana.test / arcana-demo-123) com pedidos em várias etapas e
-avaliações publicadas.
+Creates categories, pieces with generated illustrations, stock, coupons, a test
+customer (cliente@arcana.test / arcana-demo-123) with orders at several stages, and
+published reviews.
 """
 
 import random
@@ -55,8 +55,8 @@ CATEGORIAS = [
     ("acessorios", "Acessórios", "Gorros, cachecóis e mimos.", None),
 ]
 
-# slug, nome, categoria, forma, preço, promo, disponibilidade, prazo, cores, tamanhos,
-# material, destaque, estoque por variação
+# slug, name, category, shape, price, sale price, availability, lead time, colors,
+# sizes, material, featured, stock per variation
 PRODUTOS = [
     ("urso-ursolino", "Urso Ursolino", "bichinhos", "urso", 12990, None, "pronta_entrega", None,
      ["Azul Arcana", "Mostarda", "Terracota"], [], "Algodão egípcio", True, 3),
@@ -114,18 +114,18 @@ SENHA_DEMO = "arcana-demo-123"
 
 
 class Command(BaseCommand):
-    help = "Popula a loja com peças, pedidos e avaliações de demonstração."
+    help = "Fill the store with demo pieces, orders and reviews."
 
     def add_arguments(self, parser):
-        parser.add_argument("--limpar", action="store_true", help="Apaga os dados de demo antes.")
+        parser.add_argument("--limpar", action="store_true", help="Delete the demo data first.")
 
     def handle(self, *args, limpar=False, **options):
         if not settings.DEBUG:
-            raise CommandError("Use só em desenvolvimento (DEBUG=1).")
+            raise CommandError("Development only (DEBUG=1).")
         if limpar:
             self._limpar()
         if Produto.objects.filter(slug="urso-ursolino").exists():
-            self.stdout.write("Os dados de demonstração já existem. Use --limpar para recriar.")
+            self.stdout.write("The demo data already exists. Use --limpar to recreate it.")
             return
         random.seed(7)
         with transaction.atomic():
@@ -135,11 +135,11 @@ class Command(BaseCommand):
             self._pedidos_e_avaliacoes(produtos)
         self.stdout.write(
             self.style.SUCCESS(
-                f"Pronto: {len(produtos)} peças. Cliente de teste: cliente@arcana.test / {SENHA_DEMO}"
+                f"Done: {len(produtos)} pieces. Test customer: cliente@arcana.test / {SENHA_DEMO}"
             )
         )
 
-    # --- etapas -----------------------------------------------------------
+    # --- steps ------------------------------------------------------------
 
     def _limpar(self):
         demo = Usuario.objects.filter(email__endswith="@arcana.test").exclude(is_superuser=True)
@@ -160,7 +160,7 @@ class Command(BaseCommand):
                 cat.delete()
         Cupom.objects.filter(codigo__in=["BEMVINDA10", "FRETEGRATIS", "ARCANA15"]).delete()
         demo.delete()
-        self.stdout.write("Dados de demonstração apagados.")
+        self.stdout.write("Demo data deleted.")
 
     def _categorias(self):
         categorias = {}
@@ -251,7 +251,7 @@ class Command(BaseCommand):
                         registrar_movimentacao(
                             v, MovimentacaoEstoque.Tipo.ENTRADA_PRODUCAO, qtd, motivo="Demo"
                         )
-            # Fotos: uma por cor (ligada à variação) e um close da primeira
+            # Photos: one per color (linked to the variation) and a close-up of the first
             vistas = set()
             ordem = 1
             for v in variacoes:
@@ -320,7 +320,7 @@ class Command(BaseCommand):
             outros.append((u, e))
 
         prontos = [p for p in produtos if p.disponibilidade == "pronta_entrega"]
-        # Pedidos entregues de outras pessoas, com avaliações publicadas
+        # Delivered orders from other people, with published reviews
         for k, produto in enumerate(prontos[:9]):
             usuario, end = outros[k % len(outros)]
             pedido = self._comprar(usuario, end, [produto], metodo="pix")
@@ -336,7 +336,7 @@ class Command(BaseCommand):
                     if k == 0 else "",
                 )  # fmt: skip
 
-        # Pedidos da cliente de teste em etapas diferentes
+        # The test customer's orders at different stages
         por_slug = {p.slug: p for p in produtos}
         etapas = [
             (["urso-ursolino"], Pedido.Status.ENVIADO, "cartao"),
@@ -349,7 +349,7 @@ class Command(BaseCommand):
             if pedido:
                 self._ate(pedido, status, dias_atras=12 - dias * 3)
 
-    # --- auxiliares -------------------------------------------------------
+    # --- helpers ----------------------------------------------------------
 
     def _verificar_email(self, usuario):
         from allauth.account.models import EmailAddress
@@ -389,7 +389,7 @@ class Command(BaseCommand):
             )
             if proximo == status:
                 break
-        # Espalha as datas no passado para a linha do tempo ficar realista
+        # Spread the dates in the past so the timeline looks realistic
         base = timezone.now() - timedelta(days=dias_atras)
         campos = {"criado_em": base, "pago_em": base + timedelta(minutes=8)}
         if pedido.separado_em:

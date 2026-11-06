@@ -13,7 +13,7 @@ class AvaliacaoAdmin(admin.ModelAdmin):
     actions = ["publicar", "ocultar"]
 
     def has_add_permission(self, request):
-        return False  # avaliações nascem de compras entregues
+        return False  # reviews come from delivered purchases
 
     @admin.action(description="Publicar avaliações selecionadas")
     def publicar(self, request, queryset):

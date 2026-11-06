@@ -1,3 +1,2 @@
-# Scripts de shell sempre com fim de linha LF (evita erro ao rodar no Linux vindo do Windows).
+# Shell scripts always use LF line endings (avoids errors running them on Linux after editing on Windows).
 *.sh text eol=lf
-Caddyfile text eol=lf
