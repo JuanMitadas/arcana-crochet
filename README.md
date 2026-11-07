@@ -106,7 +106,8 @@ Python identifiers, models and URLs keep their Portuguese names (`Produto`, `Ped
 - [x] **Catalog (base):** product, variation, photo and stock models; admin; storefront and product page
 - [x] **Store frontend:** home, filtered listing, product, bag, step-by-step checkout, order tracking ([docs/frontend.md](docs/frontend.md))
 - [x] **Hosting:** AWS Lambda + CloudFront + S3 + Aurora DSQL, automatic deploys and daily backups ([docs/deploy.md](docs/deploy.md))
-- [ ] **Checkout:** Melhor Envio quotes, Pix and card on Asaas, webhooks, shipping labels, order emails, direct upload to S3
+- [x] **Pix with no fees:** QR code straight to the store's account, manual approval in the admin, unpaid orders cancelled automatically
+- [ ] **Checkout:** Melhor Envio quotes, card on Asaas, webhooks, shipping labels, order emails, direct upload to S3
 - [ ] **After-sales:** customer service, exchanges and returns, reports
 - [ ] **Launch:** legal texts, security testing, tested backup, beta with customers
 

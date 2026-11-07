@@ -3,6 +3,10 @@
 Each one is an ``atomico`` transaction: on Aurora DSQL a conflict with another
 transaction (two people buying the last piece) makes it run again from the start."""
 
+import logging
+from datetime import timedelta
+
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import F
 from django.utils import timezone
@@ -14,6 +18,8 @@ from apps.core.transacoes import atomico
 
 from .carrinho import Carrinho
 from .models import Cupom, Pedido, PedidoItem
+
+logger = logging.getLogger(__name__)
 
 
 class TransicaoInvalida(ValidationError):
@@ -189,3 +195,30 @@ def cancelar(pedido: Pedido, motivo: str = "") -> Pedido:
     pedido.cancelado_em = timezone.now()
     pedido.save(update_fields=["status", "cancelado_em", "atualizado_em"])
     return pedido
+
+
+def cancelar_vencidos() -> int:
+    """Cancel orders still awaiting payment after the deadline. Returns how many.
+
+    Runs every hour (EventBridge → /healthz/, see apps/core/views.py) and with
+    ``python manage.py cancelar_pedidos_vencidos``. Each order is its own transaction.
+    """
+    limite = timezone.now() - timedelta(hours=settings.LOJA["PRAZO_PAGAMENTO_HORAS"])
+    vencidos = Pedido.objects.filter(
+        status=Pedido.Status.AGUARDANDO_PAGAMENTO, criado_em__lt=limite
+    ).values_list("pk", flat=True)
+    cancelados = sum(_cancelar_se_vencido(pk, limite) for pk in list(vencidos))
+    if cancelados:
+        logger.info("Cancelled %s unpaid order(s) past the deadline", cancelados)
+    return cancelados
+
+
+@atomico
+def _cancelar_se_vencido(pk, limite) -> bool:
+    # Checked again under the lock: the payment may have been approved meanwhile, and
+    # cancelar() would also cancel a paid order.
+    pedido = Pedido.objects.select_for_update().get(pk=pk)
+    if pedido.status != Pedido.Status.AGUARDANDO_PAGAMENTO or pedido.criado_em >= limite:
+        return False
+    cancelar(pedido, motivo="Pagamento não recebido no prazo")
+    return True

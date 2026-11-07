@@ -221,6 +221,14 @@ Resources:
             Input: '{"aquecimento": true}'
             RetryPolicy:
               MaximumRetryAttempts: 0
+        # Cancels orders not paid within LOJA_PRAZO_PAGAMENTO_HORAS (see apps/core/views.py).
+        PedidosVencidos:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(1 hour)
+            Input: '{"tarefa": "cancelar_pedidos_vencidos"}'
+            RetryPolicy:
+              MaximumRetryAttempts: 2
 
   # --- CloudFront -----------------------------------------------------------
 

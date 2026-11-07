@@ -45,18 +45,24 @@
     {% if pedido.status == "aguardando_pagamento" %}
       {% if pedido.metodo_pagamento == "pix" %}
         <h3 class="text-xl">Pague com Pix para confirmar</h3>
-        <div class="mt-4 grid gap-5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-center">
-          <div class="grid aspect-square place-items-center rounded-2xl border-2 border-dashed border-turquesa/50 bg-[#fffef6] p-3 text-center text-xs text-ardosia">QR Code do Pix</div>
-          <div>
-            <p class="text-sm">Abra o app do seu banco, escolha Pix e leia o QR Code, ou use o código copia e cola:</p>
-            <div class="mt-3 flex gap-2">
-              <label for="pix-copia-cola" class="sr-only">Código Pix copia e cola</label>
-              <input id="pix-copia-cola" readonly value="Disponível quando o Asaas estiver conectado" class="!rounded-full text-xs">
-              <button type="button" class="btn btn-secundario shrink-0" data-copiar="#pix-copia-cola"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-copiar"/></svg>Copiar</button>
+        <p class="mt-1 text-sm">Pague até <strong>{{ pedido.pagar_ate|date:"d/m \à\s H:i" }}</strong>. Depois disso o pedido é cancelado e as peças voltam para a loja.</p>
+        {% if pix %}
+          <div class="mt-4 grid gap-5 sm:grid-cols-[11rem_minmax(0,1fr)] sm:items-center">
+            <div class="mx-auto w-44 overflow-hidden rounded-2xl border border-creme-3 bg-[#fffef6] p-2 sm:mx-0" role="img" aria-label="QR Code do Pix de {{ pedido.total_centavos|brl }}">{{ pix.qr_svg|safe }}</div>
+            <div>
+              <p class="text-sm">Abra o app do seu banco, escolha Pix e leia o QR Code, ou use o código copia e cola:</p>
+              <div class="mt-3 flex gap-2">
+                <label for="pix-copia-cola" class="sr-only">Código Pix copia e cola</label>
+                <input id="pix-copia-cola" readonly value="{{ pix.copia_e_cola }}" class="!rounded-full text-xs">
+                <button type="button" class="btn btn-secundario shrink-0" data-copiar="#pix-copia-cola"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-copiar"/></svg>Copiar</button>
+              </div>
+              <p class="mt-2 text-sm font-semibold">Valor: {{ pedido.total_centavos|brl }}</p>
+              <p class="mt-1 text-sm text-ardosia">O Pix vai para {{ loja.PIX_RECEBEDOR }}. Assim que ele cair na conta, a Kamilly confirma o pagamento e o status do pedido muda aqui, normalmente em poucas horas.</p>
             </div>
-            <p class="mt-2 text-sm font-semibold">Valor: {{ pedido.total_centavos|brl }}</p>
           </div>
-        </div>
+        {% else %}
+          <p class="mensagem mt-4"><svg class="icone" aria-hidden="true"><use href="#i-pix"/></svg>{% if pode_simular %}Pix não configurado: defina LOJA_PIX_CHAVE, LOJA_PIX_RECEBEDOR e LOJA_PIX_CIDADE.{% else %}O código Pix não está disponível agora. Fale com a gente para concluir o pagamento.{% endif %}</p>
+        {% endif %}
       {% else %}
         <h3 class="text-xl">Conclua o pagamento no cartão</h3>
         <p class="mt-2 text-sm">Você vai digitar os dados do cartão no ambiente seguro do Asaas, em {{ pedido.parcelas }}x sem juros.</p>
@@ -65,7 +71,7 @@
       {% if pode_simular %}
         <form method="post" action="{% url 'pedidos:simular_pagamento' pedido.codigo %}" class="mt-5 border-t border-creme-3 pt-4">
           {% csrf_token %}
-          <p class="text-xs text-ardosia">Ambiente de desenvolvimento: sem o Asaas, aprove o pagamento manualmente para testar o fluxo.</p>
+          <p class="text-xs text-ardosia">Ambiente de desenvolvimento: aprove o pagamento manualmente para testar o fluxo.</p>
           <button type="submit" class="btn btn-claro mt-2 border border-azul/30">Simular pagamento aprovado</button>
         </form>
       {% endif %}

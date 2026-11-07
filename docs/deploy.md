@@ -58,6 +58,7 @@ The script generates the `SECRET_KEY` and the secret CloudFront sends to the Lam
 
 - **EMAIL_URL:** the SMTP server for emails ([external-accounts.md](external-accounts.md#5-transactional-email)). **Without it nobody can sign up** on the published store, because sign-up requires confirming the email. You can skip it now and run the script again later.
 - **DEFAULT_FROM_EMAIL** and **ADMIN_URL** (the admin path; use something hard to guess, like `painel-x7k2/`).
+- **LOJA_PIX_CHAVE**, **LOJA_PIX_RECEBEDOR** and **LOJA_PIX_CIDADE:** the Pix key that receives the payments, and the account holder's name and city as the bank shows them. They stay in SSM, out of the public repository. Without them, the order page asks the customer to get in touch instead of showing the QR code. See [Receiving Pix payments](#receiving-pix-payments).
 
 There is no database password to store: the Lambda connects to Aurora DSQL with an IAM token signed by its own role.
 
@@ -118,6 +119,17 @@ The CloudFront certificate must be in the **us-east-1** region, and the apex dom
 4. Back in Route 53, in the domain's zone, create four records: **A** and **AAAA** for the apex domain and for `www`, all as *Alias* to the CloudFront distribution.
 
 Requests to `www` are redirected to the domain without www by CloudFront itself.
+
+## Receiving Pix payments
+
+Pix goes straight to the store's bank account, with no payment provider in between and no fees (as long as the bank doesn't charge to receive Pix).
+
+1. After the review step, the order page shows a QR code and the "copia e cola" text with the order amount and the order code (`ARC-XXXXXX`) as the identifier.
+2. The customer pays; the money lands in the account. **The site isn't told about it.**
+3. Check the bank app, find the payment by amount (the bank usually shows the identifier too) and approve it in the admin: **Pedidos** → select the order → action **Aprovar pagamento (manual)**. The reserved pieces become a sale and the customer sees "Pagamento aprovado".
+4. Orders not paid within `LOJA_PRAZO_PAGAMENTO_HORAS` (24 by default) are cancelled every hour by an EventBridge schedule, and their pieces go back on sale. The **pagar até** column in the admin shows each deadline.
+
+If a Pix arrives after the order was cancelled, refund it from the bank app or ask the customer to place the order again. Card payments (Asaas) come in a later phase.
 
 ## 7. Database changes
 

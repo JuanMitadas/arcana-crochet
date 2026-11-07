@@ -13,7 +13,7 @@ from apps.catalogo.models import Produto, ProdutoFoto, ProdutoVariacao
 from apps.contas.models import Endereco
 from apps.core import precos
 
-from . import servicos
+from . import pix, servicos
 from .carrinho import Carrinho
 from .forms import AvaliacaoForm, EnderecoForm
 from .frete import cep_valido, limpar_cep
@@ -373,6 +373,10 @@ def pedido_detalhe(request, codigo):
             "novo": request.GET.get("novo") == "1",
             "avaliados": avaliados,
             "pode_simular": settings.DEBUG,
+            "pix": pix.cobranca(pedido)
+            if pedido.status == Pedido.Status.AGUARDANDO_PAGAMENTO
+            and pedido.metodo_pagamento == Pedido.Metodo.PIX
+            else None,
             "secao": "pedidos",
         },
     )

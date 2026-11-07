@@ -1,4 +1,5 @@
 import secrets
+from datetime import timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -191,6 +192,11 @@ class Pedido(ModeloBase):
             f"{e['logradouro']}, {e['numero']}{complemento}, {e['bairro']}, "
             f"{e['cidade']}/{e['uf']}, CEP {e['cep'][:5]}-{e['cep'][5:]}"
         )
+
+    @property
+    def pagar_ate(self):
+        """Deadline to pay before the order is cancelled (servicos.cancelar_vencidos)."""
+        return self.criado_em + timedelta(hours=settings.LOJA["PRAZO_PAGAMENTO_HORAS"])
 
     @property
     def pode_avaliar(self) -> bool:

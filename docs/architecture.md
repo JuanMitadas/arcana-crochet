@@ -30,7 +30,7 @@ The store is a Django app running on AWS Lambda in São Paulo (sa-east-1), behin
 | S3 | Product photos (old versions kept for 30 days) | cents |
 | ECR | Lambda images; only the 3 most recent are kept | ~US$ 0.05 |
 | SSM Parameter Store | Secrets: Django key, SMTP, CloudFront secret | US$ 0 |
-| EventBridge Scheduler | Calls the Lambda every 5 minutes to keep it warm, without touching the database | US$ 0 |
+| EventBridge Scheduler | Calls the Lambda every 5 minutes to keep it warm (without touching the database) and every hour to cancel unpaid orders past the deadline | US$ 0 |
 | CloudWatch Logs | Lambda logs, kept for 14 days | US$ 0 (5 GB/month) |
 | IAM + OIDC | Role GitHub Actions assumes to deploy | US$ 0 |
 | CloudFormation (SAM) | The whole infrastructure as code: `infra/template.yaml` and `infra/base.yaml` | US$ 0 |

@@ -1,5 +1,4 @@
 import pytest
-from django.contrib.sessions.backends.db import SessionStore
 from django.core.exceptions import ValidationError
 
 from apps.avaliacoes.models import Avaliacao
@@ -7,21 +6,7 @@ from apps.catalogo.models import Produto, ProdutoVariacao
 from apps.pedidos import servicos
 from apps.pedidos.carrinho import Carrinho
 from apps.pedidos.models import Cupom, Pedido
-
-
-class Requisicao:
-    def __init__(self):
-        self.session = SessionStore()
-
-
-@pytest.fixture
-def carrinho():
-    return Carrinho(Requisicao())
-
-
-@pytest.fixture
-def pronta(variacao, com_estoque):
-    return com_estoque(variacao, 2)
+from tests.conftest import Requisicao
 
 
 def _fechar(cliente, endereco, carrinho, metodo="pix", parcelas=1):

@@ -323,6 +323,13 @@ LOJA = {
     "WHATSAPP": env("LOJA_WHATSAPP", default=""),
     "EMAIL_ATENDIMENTO": env("LOJA_EMAIL_ATENDIMENTO", default="contato@arcanacrochet.com.br"),
     "INSTAGRAM": env("LOJA_INSTAGRAM", default="arcanacrochet"),
+    # Pix straight to the store's account (apps/pedidos/pix.py). The key, name and city
+    # show up in the customer's bank app; on AWS they live in SSM, not in the repo.
+    "PIX_CHAVE": env("LOJA_PIX_CHAVE", default=""),
+    "PIX_RECEBEDOR": env("LOJA_PIX_RECEBEDOR", default=""),
+    "PIX_CIDADE": env("LOJA_PIX_CIDADE", default=""),
+    # Unpaid orders are cancelled after this many hours and their pieces go back on sale.
+    "PRAZO_PAGAMENTO_HORAS": env.int("LOJA_PRAZO_PAGAMENTO_HORAS", default=24),
 }
 
 # --- Logs -------------------------------------------------------------------

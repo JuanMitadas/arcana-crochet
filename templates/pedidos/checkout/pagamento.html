@@ -13,10 +13,10 @@
       <input type="radio" name="metodo" value="pix" {% if metodo == "pix" %}checked{% endif %}>
       <span class="flex-1">
         <span class="flex items-center gap-2 text-lg font-bold"><svg class="icone text-turquesa" aria-hidden="true"><use href="#i-pix"/></svg>Pix</span>
-        <span class="text-sm text-ardosia">{{ loja.PIX_DESCONTO_PCT }}% de desconto nos produtos. Aprovação na hora.</span>
+        <span class="text-sm text-ardosia">{{ loja.PIX_DESCONTO_PCT }}% de desconto nos produtos.</span>
       </span>
       <span class="text-right"><strong class="font-titulo text-2xl numeros-tabulares">{{ carrinho.total_pix_centavos|brl }}</strong><br><span class="text-xs text-verde font-semibold">economia de {{ carrinho.desconto_pix_centavos|brl }}</span></span>
-      <span class="escolha__extra w-full pl-8 text-sm text-ardosia">Depois de confirmar, mostramos o QR Code e o código copia e cola. O Pix vale por 30 minutos.</span>
+      <span class="escolha__extra w-full pl-8 text-sm text-ardosia">Depois de confirmar, mostramos o QR Code e o código copia e cola. Você tem até {{ loja.PRAZO_PAGAMENTO_HORAS }} horas para pagar.</span>
     </label>
 
     <label class="escolha flex-wrap">

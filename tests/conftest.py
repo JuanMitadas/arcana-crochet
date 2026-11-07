@@ -82,3 +82,25 @@ def endereco(cliente):
         uf="SP",
         padrao=True,
     )
+
+
+class Requisicao:
+    """Just enough of a request for Carrinho: a session."""
+
+    def __init__(self):
+        from django.contrib.sessions.backends.db import SessionStore
+
+        self.session = SessionStore()
+
+
+@pytest.fixture
+def carrinho():
+    from apps.pedidos.carrinho import Carrinho
+
+    return Carrinho(Requisicao())
+
+
+@pytest.fixture
+def pronta(variacao, com_estoque):
+    """Ready-to-ship variation with 2 pieces in stock."""
+    return com_estoque(variacao, 2)

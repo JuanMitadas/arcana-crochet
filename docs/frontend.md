@@ -81,7 +81,7 @@ Home (/)
 
 ### 5. Order tracking (`pedidos/conta/pedido.html`)
 - **Timeline:** Payment approved → Being prepared → Shipped → Delivered, with the date and time of each step.
-- A box with what happens now: Pix instructions, production notice, **tracking code with a copy button** and tracking link, or an invitation to review.
+- A box with what happens now: Pix QR code and "copia e cola" with the payment deadline (Pix goes straight to the store's account and is approved in the admin, see [deploy.md](deploy.md#receiving-pix-payments)), production notice, **tracking code with a copy button** and tracking link, or an invitation to review.
 - Items, amounts, payment method and shipping address.
 
 ## Business rules in the interface

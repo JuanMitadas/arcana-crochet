@@ -1,5 +1,6 @@
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from apps.core.templatetags.dinheiro import brl
 
@@ -24,7 +25,9 @@ class ItemInline(admin.TabularInline):
 
 @admin.register(Pedido)
 class PedidoAdmin(admin.ModelAdmin):
-    list_display = ["codigo", "cliente", "status", "total", "metodo_pagamento", "criado_em"]
+    list_display = [
+        "codigo", "cliente", "status", "total", "metodo_pagamento", "pagar_ate", "criado_em"
+    ]  # fmt: skip
     list_filter = ["status", "metodo_pagamento"]
     search_fields = ["codigo", "cliente__email", "codigo_rastreio"]
     date_hierarchy = "criado_em"
@@ -74,6 +77,14 @@ class PedidoAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+    @admin.display(description="pagar até")
+    def pagar_ate(self, obj):
+        # Pix lands in the bank account without telling the site: compare with the bank
+        # app and use "Aprovar pagamento (manual)". Overdue orders are cancelled hourly.
+        if obj.status != Pedido.Status.AGUARDANDO_PAGAMENTO:
+            return "—"
+        return timezone.localtime(obj.pagar_ate).strftime("%d/%m %H:%M")
 
     @admin.display(description="total", ordering="total_centavos")
     def total(self, obj):
