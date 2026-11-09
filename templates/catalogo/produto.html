@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% load dinheiro loja %}
+
+{% block head_title %}{{ produto.nome }} | Arcana Crochet{% endblock %}
+{% block meta_description %}{{ produto.descricao|striptags|truncatechars:155 }}{% endblock %}
+
+{% block content %}
+{% with desconto=produto|desconto_pct preco=produto.preco_atual_centavos %}
+<div class="container-loja pt-6">
+  <nav class="migalhas" aria-label="Você está em">
+    <ol>
+      <li><a href="{% url 'catalogo:home' %}">Início</a></li>
+      {% if produto.categoria.pai %}<li><a href="{% url 'catalogo:categoria' produto.categoria.pai.slug %}">{{ produto.categoria.pai.nome }}</a></li>{% endif %}
+      <li><a href="{% url 'catalogo:categoria' produto.categoria.slug %}">{{ produto.categoria.nome }}</a></li>
+      <li aria-current="page">{{ produto.nome }}</li>
+    </ol>
+  </nav>
+
+  <div class="mt-6 grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
+    {# Gallery #}
+    <section aria-label="Fotos e vídeo da peça" class="lg:sticky lg:top-40 self-start" data-galeria>
+      {% with fotos=produto.fotos.all %}
+      <div class="galeria__principal">
+        {% for foto in fotos %}
+          <img src="{{ foto.imagem.url }}" alt="{{ foto.texto_alternativo }}" width="{{ foto.largura|default:900 }}" height="{{ foto.altura|default:1125 }}" data-slide {% if forloop.first %}class="ativo" fetchpriority="high"{% else %}loading="lazy"{% endif %}>
+        {% endfor %}
+        {% if produto.video %}
+          <video data-slide controls preload="none" playsinline {% if fotos %}poster="{{ fotos.0.imagem.url }}"{% endif %} {% if not fotos %}class="ativo"{% endif %}>
+            <source src="{{ produto.video.url }}">
+          </video>
+        {% endif %}
+        {% if desconto %}<span class="selo-desconto !absolute !inset-auto top-5 left-5 !w-16 !h-16 text-base">-{{ desconto }}%</span>{% endif %}
+      </div>
+      {% if fotos|length > 1 or produto.video %}
+        <div class="galeria__miniaturas mt-4" role="group" aria-label="Escolher foto">
+          {% for foto in fotos %}
+            <button type="button" data-miniatura="{{ forloop.counter0 }}" aria-label="Ver foto {{ forloop.counter }}" {% if forloop.first %}aria-current="true"{% endif %}>
+              <img src="{{ foto.imagem.url }}" alt="" width="68" height="68" loading="lazy">
+            </button>
+          {% endfor %}
+          {% if produto.video %}
+            <button type="button" data-miniatura="{{ fotos|length }}" aria-label="Ver vídeo" class="grid place-items-center !bg-azul text-creme">
+              <svg class="icone w-7 h-7" aria-hidden="true"><use href="#i-play"/></svg>
+            </button>
+          {% endif %}
+        </div>
+      {% endif %}
+      {% endwith %}
+    </section>
+
+    {# Details and buy box #}
+    <section aria-labelledby="nome-produto">
+      <a href="{% url 'catalogo:categoria' produto.categoria.slug %}" class="text-sm font-semibold text-turquesa no-underline hover:underline">{{ produto.categoria.nome }}</a>
+      <h1 id="nome-produto" class="mt-1 text-4xl md:text-5xl">{{ produto.nome }}</h1>
+      {% if total_avaliacoes %}
+        <a href="#avaliacoes" class="mt-3 inline-flex items-center gap-2 text-sm no-underline hover:underline">
+          {% estrelas nota_media "md" total_avaliacoes %}
+          <span class="font-semibold">{{ nota_media|floatformat:1 }}</span>
+          <span class="text-ardosia">({{ total_avaliacoes }} avaliaç{{ total_avaliacoes|pluralize:"ão,ões" }})</span>
+        </a>
+      {% endif %}
+
+      <form method="post" action="{% url 'pedidos:adicionar' %}" class="painel mt-6 p-5 md:p-6" data-compra>
+        {% csrf_token %}
+
+        <div data-precos>
+          {% if produto.em_promocao %}
+            <p class="flex items-center gap-2"><span class="preco-de !text-base" data-preco-de>{{ produto.preco_centavos|brl }}</span><span class="selo-desconto selo-desconto--redondo">-{{ desconto }}%</span></p>
+          {% endif %}
+          <p class="mt-1 flex flex-wrap items-baseline gap-x-2">
+            <span class="font-titulo text-4xl font-bold numeros-tabulares" data-preco-pix>{{ preco|pix }}</span>
+            <span class="font-semibold text-verde">no Pix</span>
+          </p>
+          <p class="text-sm text-ardosia">{{ loja.PIX_DESCONTO_PCT }}% de desconto pagando à vista no Pix</p>
+          <p class="mt-3 text-base">
+            ou <strong data-preco>{{ preco|brl }}</strong> no cartão, em <span data-parcelas>{{ preco|parcelas }}</span>
+          </p>
+          {% if opcoes_parcelas|length > 1 %}
+            <details class="mt-1 text-sm">
+              <summary class="link cursor-pointer w-fit">Ver opções de parcelamento</summary>
+              <ul class="mt-2 grid grid-cols-1 gap-1 rounded-xl bg-creme-2 p-3 sm:grid-cols-2" data-lista-parcelas>
+                {% for opcao in opcoes_parcelas %}<li>{{ opcao.vezes }}x de {{ opcao.valor_parcela_centavos|brl }} sem juros</li>{% endfor %}
+              </ul>
+            </details>
+          {% endif %}
+        </div>
+
+        <hr class="my-5 border-creme-3">
+
+        {# Variation picker: without JS a plain select; with JS, color swatches and sizes #}
+        {% if variacoes|length > 1 %}
+          <div data-seletor-simples>
+            <label for="variacao" class="mb-1 block">Opção</label>
+            <select id="variacao" name="variacao" data-select-variacao>
+              {% for v in variacoes %}
+                <option value="{{ v.pk }}" {% if v == variacao_inicial %}selected{% endif %} {% if not sob_encomenda and v.disponivel <= 0 %}disabled{% endif %}>
+                  {{ v.cor|default:"Padrão" }}{% if v.tamanho %} / {{ v.tamanho }}{% endif %} ({{ v.preco_centavos|brl }}){% if not sob_encomenda and v.disponivel <= 0 %}, esgotada{% endif %}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="flex flex-col gap-5" data-seletor-amostras hidden>
+            {% if cores %}
+              <fieldset>
+                <legend class="mb-2 text-sm font-semibold">Cor: <span class="font-normal" data-nome-cor>{{ variacao_inicial.cor }}</span></legend>
+                <div class="flex flex-wrap gap-2">
+                  {% for cor in cores %}
+                    <label class="amostra">
+                      <input type="radio" name="_cor" value="{{ cor.nome }}" {% if cor.nome == variacao_inicial.cor %}checked{% endif %} data-cor>
+                      <span><svg class="w-6 h-6" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="{{ cor.hex|default:'#e6e0bf' }}" stroke="#034947" stroke-opacity=".2"/></svg>{{ cor.nome }}</span>
+                    </label>
+                  {% endfor %}
+                </div>
+              </fieldset>
+            {% endif %}
+            {% if tamanhos %}
+              <fieldset>
+                <legend class="mb-2 text-sm font-semibold">Tamanho</legend>
+                <div class="flex flex-wrap gap-2">
+                  {% for tamanho in tamanhos %}
+                    <label class="amostra amostra--tamanho">
+                      <input type="radio" name="_tamanho" value="{{ tamanho }}" {% if tamanho == variacao_inicial.tamanho %}checked{% endif %} data-tamanho>
+                      <span>{{ tamanho }}</span>
+                    </label>
+                  {% endfor %}
+                </div>
+              </fieldset>
+            {% endif %}
+          </div>
+        {% elif variacao_inicial %}
+          <input type="hidden" name="variacao" value="{{ variacao_inicial.pk }}" data-select-variacao>
+          {% if variacao_inicial.cor or variacao_inicial.tamanho %}
+            <p class="text-sm"><strong>Opção:</strong> {{ variacao_inicial.cor }}{% if variacao_inicial.tamanho %} / {{ variacao_inicial.tamanho }}{% endif %}</p>
+          {% endif %}
+        {% endif %}
+
+        <p class="mt-4 flex items-center gap-2 text-sm font-semibold" data-estoque aria-live="polite">
+          {% if sob_encomenda %}
+            <svg class="icone text-turquesa" aria-hidden="true"><use href="#i-relogio"/></svg>
+            <span>Feita sob encomenda: fica pronta em até {{ produto.prazo_producao_dias }} dias, mais o prazo de entrega.</span>
+          {% elif not comprar_disponivel %}
+            <svg class="icone text-alerta" aria-hidden="true"><use href="#i-fechar"/></svg><span class="text-alerta">Esgotada no momento.</span>
+          {% elif variacao_inicial.disponivel == 1 %}
+            <svg class="icone text-turquesa" aria-hidden="true"><use href="#i-brilho"/></svg><span>Peça única: só existe esta.</span>
+          {% elif variacao_inicial.disponivel <= 3 %}
+            <svg class="icone text-turquesa" aria-hidden="true"><use href="#i-pacote"/></svg><span>Últimas {{ variacao_inicial.disponivel }} unidades, pronta para enviar.</span>
+          {% else %}
+            <svg class="icone text-turquesa" aria-hidden="true"><use href="#i-pacote"/></svg><span>Pronta para enviar.</span>
+          {% endif %}
+        </p>
+
+        <div class="mt-5 flex flex-wrap items-center gap-3">
+          <div class="quantidade" data-quantidade>
+            <button type="button" data-menos aria-label="Diminuir quantidade"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-menos"/></svg></button>
+            <label for="quantidade" class="sr-only">Quantidade</label>
+            <input id="quantidade" type="number" name="quantidade" value="1" min="1" max="{% if sob_encomenda %}10{% else %}{{ variacao_inicial.disponivel|default:1 }}{% endif %}" inputmode="numeric">
+            <button type="button" data-mais aria-label="Aumentar quantidade"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-mais"/></svg></button>
+          </div>
+          <button type="submit" class="btn btn-primario btn-grande flex-1" {% if not comprar_disponivel %}disabled{% endif %} data-botao-comprar>
+            <svg class="icone" aria-hidden="true"><use href="#i-sacola"/></svg> Adicionar à sacola
+          </button>
+        </div>
+        <button type="submit" name="acao" value="comprar" class="btn btn-secundario btn-bloco mt-3" {% if not comprar_disponivel %}disabled{% endif %} data-botao-comprar>Comprar agora</button>
+        {% if produto.personalizavel %}
+          <p class="mt-4 text-sm text-ardosia">Quer em outra cor ou com um detalhe especial? <a class="link" href="mailto:{{ loja.EMAIL_ATENDIMENTO }}?subject={{ produto.nome|urlencode }}">Fale com a Kamilly</a>.</p>
+        {% endif %}
+      </form>
+
+      {# Shipping #}
+      <section class="painel-suave mt-4 p-5" aria-labelledby="titulo-frete">
+        <h2 id="titulo-frete" class="flex items-center gap-2 font-sans text-base font-bold"><svg class="icone" aria-hidden="true"><use href="#i-caminhao"/></svg>Calcular frete e prazo</h2>
+        <form class="mt-3 flex gap-2" hx-post="{% url 'catalogo:produto_frete' produto.slug %}" hx-target="#frete-resultado" hx-include="[name=quantidade]" method="post" action="{% url 'catalogo:produto_frete' produto.slug %}">
+          {% csrf_token %}
+          <label for="cep-produto" class="sr-only">CEP</label>
+          <input id="cep-produto" name="cep" value="{{ cep|cep }}" placeholder="Digite seu CEP" inputmode="numeric" autocomplete="postal-code" maxlength="9" data-cep-mascara class="!rounded-full">
+          <button type="submit" class="btn btn-secundario">Calcular</button>
+        </form>
+        <a class="mt-2 inline-block text-xs link" href="https://buscacepinter.correios.com.br/app/endereco/index.php" target="_blank" rel="noopener">Não sei meu CEP</a>
+        <div id="frete-resultado" aria-live="polite">{% if frete_opcoes %}{% include "catalogo/_frete.html" with opcoes=frete_opcoes regiao=frete_regiao erro="" %}{% endif %}</div>
+      </section>
+
+      <ul class="mt-6 grid gap-3 text-sm sm:grid-cols-3">
+        <li class="flex items-center gap-2"><svg class="icone text-turquesa" aria-hidden="true"><use href="#i-mao"/></svg>Feita à mão, ponto a ponto</li>
+        <li class="flex items-center gap-2"><svg class="icone text-turquesa" aria-hidden="true"><use href="#i-troca"/></svg>7 dias para trocar</li>
+        <li class="flex items-center gap-2"><svg class="icone text-turquesa" aria-hidden="true"><use href="#i-cadeado"/></svg>Pagamento seguro</li>
+      </ul>
+    </section>
+  </div>
+
+  {# Description and spec sheet #}
+  <div class="mt-20 grid gap-12 lg:grid-cols-2 lg:gap-16">
+    <section aria-labelledby="titulo-descricao">
+      <h2 id="titulo-descricao" class="titulo-secao">Sobre a peça</h2>
+      <svg class="onda" aria-hidden="true"><use href="#i-onda"/></svg>
+      <div class="prosa mt-5 text-[1.0625rem] leading-relaxed">{{ produto.descricao|linebreaks }}</div>
+      {% if produto.cuidados %}
+        <div class="painel-suave mt-8 p-5">
+          <h3 class="text-xl">Cuidados com a peça</h3>
+          <div class="prosa mt-2 text-sm">{{ produto.cuidados|linebreaks }}</div>
+        </div>
+      {% endif %}
+    </section>
+
+    <section aria-labelledby="titulo-ficha">
+      <h2 id="titulo-ficha" class="titulo-secao">Ficha técnica</h2>
+      <svg class="onda" aria-hidden="true"><use href="#i-onda"/></svg>
+      <table class="ficha mt-5">
+        <tbody>
+          {% for item in produto.especificacoes.all %}<tr><th scope="row">{{ item.nome }}</th><td>{{ item.valor }}</td></tr>{% endfor %}
+          {% if produto.material %}<tr><th scope="row">Material</th><td>{{ produto.material }}</td></tr>{% endif %}
+          {% if cores %}<tr><th scope="row">Cores</th><td>{% for c in cores %}{{ c.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}</td></tr>{% endif %}
+          {% if tamanhos %}<tr><th scope="row">Tamanhos</th><td>{{ tamanhos|join:", " }}</td></tr>{% endif %}
+          <tr><th scope="row">Produção</th><td>{% if sob_encomenda %}Sob encomenda, até {{ produto.prazo_producao_dias }} dias{% else %}Pronta entrega{% endif %}</td></tr>
+          <tr><th scope="row">Embalagem</th><td>{{ produto.comprimento_cm }} × {{ produto.largura_cm }} × {{ produto.altura_cm }} cm, {{ produto.peso_g }} g</td></tr>
+          <tr><th scope="row">Feito por</th><td>Kamilly, na Arcana Crochet</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  {# Reviews #}
+  <section id="avaliacoes" class="mt-20 scroll-mt-36" aria-labelledby="titulo-avaliacoes">
+    <h2 id="titulo-avaliacoes" class="titulo-secao">O que dizem de quem recebeu</h2>
+    <svg class="onda" aria-hidden="true"><use href="#i-onda"/></svg>
+
+    {% if total_avaliacoes %}
+      <div class="mt-8 grid gap-10 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-16">
+        <div class="self-start lg:sticky lg:top-40">
+          <p class="flex items-end gap-3"><span class="font-titulo text-6xl font-bold leading-none">{{ nota_media|floatformat:1 }}</span><span class="pb-1 text-ardosia">de 5</span></p>
+          <div class="mt-2">{% estrelas nota_media "lg" %}</div>
+          <p class="mt-1 text-sm text-ardosia">{{ total_avaliacoes }} avaliaç{{ total_avaliacoes|pluralize:"ão,ões" }} de compras entregues</p>
+          <ul class="mt-6 flex flex-col gap-2">
+            {% for linha in distribuicao %}
+              <li class="grid grid-cols-[3.25rem_1fr_2rem] items-center gap-3 text-sm">
+                <span class="flex items-center gap-1">{{ linha.nota }} <svg class="icone w-3.5 h-3.5 text-turquesa" aria-hidden="true"><use href="#i-estrela"/></svg></span>
+                <progress class="barra" max="{{ total_avaliacoes }}" value="{{ linha.total }}" aria-label="{{ linha.total }} avaliações com {{ linha.nota }} estrelas"></progress>
+                <span class="text-right text-ardosia numeros-tabulares">{{ linha.total }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+          <p class="mt-6 text-sm text-ardosia">Comprou esta peça? Você pode avaliar em <a class="link" href="{% url 'pedidos:lista' %}">Meus pedidos</a> depois de receber.</p>
+        </div>
+
+        <ul class="flex flex-col divide-y divide-creme-3">
+          {% for av in avaliacoes %}
+            <li class="py-6 first:pt-0">
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {% estrelas av.nota %}
+                {% if av.titulo %}<h3 class="font-sans text-base font-bold">{{ av.titulo }}</h3>{% endif %}
+              </div>
+              {% if av.comentario %}<p class="mt-2 leading-relaxed">{{ av.comentario }}</p>{% endif %}
+              <p class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ardosia">
+                <span class="font-semibold text-petroleo">{{ av.nome_autor }}</span>
+                <time datetime="{{ av.criado_em|date:'c' }}">{{ av.criado_em|date:"j \d\e F \d\e Y"|lower }}</time>
+                {% if av.compra_verificada %}<span class="etiqueta etiqueta--turquesa"><svg class="icone w-3.5 h-3.5" aria-hidden="true"><use href="#i-check"/></svg>Compra verificada</span>{% endif %}
+              </p>
+              {% if av.resposta_loja %}
+                <div class="mt-4 ml-4 rounded-2xl border-l-4 border-turquesa bg-creme-2 p-4 text-sm">
+                  <p class="font-semibold">Resposta da Arcana</p>
+                  <p class="mt-1">{{ av.resposta_loja }}</p>
+                </div>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% else %}
+      <div class="painel-suave mt-8 p-8 text-center">
+        <p class="font-titulo text-xl">Esta peça ainda não tem avaliações.</p>
+        <p class="mt-1 text-sm text-ardosia">Quem compra pode avaliar depois de receber, em Meus pedidos.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  {% if relacionados %}
+    <div class="mt-20">
+      {% url 'catalogo:categoria' produto.categoria.slug as url_categoria %}
+      {% include "componentes/carrossel.html" with titulo="Você também pode gostar" produtos=relacionados id="relacionados" link=url_categoria %}
+    </div>
+  {% endif %}
+</div>
+
+{{ dados_variacoes|json_script:"dados-variacoes" }}
+<script type="application/json" id="regras-preco">{"pix": {{ loja.PIX_DESCONTO_PCT }}, "parcelas": {{ loja.PARCELAS_SEM_JUROS }}, "minima": {{ loja.PARCELA_MINIMA_CENTAVOS }}, "sobEncomenda": {{ sob_encomenda|yesno:"true,false" }}, "prazo": {{ produto.prazo_producao_dias|default:0 }}}</script>
+{% endwith %}
+{% endblock %}

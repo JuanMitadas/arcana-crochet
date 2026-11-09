@@ -1,0 +1,3 @@
+<span class="estrelas estrelas--{{ tamanho }}" role="img" aria-label="Nota {{ nota|floatformat:1 }} de 5{% if total is not None %}, {{ total }} avaliaç{{ total|pluralize:'ão,ões' }}{% endif %}">
+  {% for _ in cheias %}<svg class="icone" aria-hidden="true"><use href="#i-estrela"/></svg>{% endfor %}{% if meia %}<svg class="icone" aria-hidden="true"><use href="#i-estrela-meia"/></svg>{% endif %}{% for _ in vazias %}<svg class="icone" aria-hidden="true"><use href="#i-estrela-vazia"/></svg>{% endfor %}
+</span>

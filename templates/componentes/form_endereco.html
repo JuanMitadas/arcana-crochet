@@ -1,0 +1,15 @@
+{# Address fields, filled in automatically from the CEP (ViaCEP) #}
+<div class="grid gap-4 sm:grid-cols-6" data-endereco>
+  {% for campo in form %}
+    {% if campo.name == "padrao" %}
+      <label class="sm:col-span-6 flex items-center gap-2 font-medium">{{ campo }} {{ campo.label }}</label>
+    {% else %}
+      <div class="campo {% if campo.name == 'cep' %}sm:col-span-2{% elif campo.name == 'logradouro' %}sm:col-span-4{% elif campo.name == 'numero' or campo.name == 'uf' %}sm:col-span-2{% elif campo.name == 'complemento' %}sm:col-span-4{% elif campo.name == 'bairro' or campo.name == 'cidade' %}sm:col-span-3{% elif campo.name == 'destinatario' %}sm:col-span-4{% else %}sm:col-span-3{% endif %}">
+        <label for="{{ campo.id_for_label }}">{{ campo.label }}{% if not campo.field.required %} <span class="font-normal text-ardosia">(opcional)</span>{% endif %}</label>
+        {{ campo }}
+        {% if campo.name == "cep" %}<span class="ajuda" data-cep-status aria-live="polite">Preenchemos a rua para você.</span>{% endif %}
+        {% for erro in campo.errors %}<span class="erro">{{ erro }}</span>{% endfor %}
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>

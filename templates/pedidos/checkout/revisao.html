@@ -1,0 +1,39 @@
+{% extends "pedidos/checkout/base.html" %}
+{% load dinheiro loja %}
+
+{% block etapa %}
+<h1 class="text-3xl md:text-4xl">Confira e confirme</h1>
+
+<div class="mt-8 grid gap-4 sm:grid-cols-2">
+  <section class="painel p-5" aria-labelledby="rev-entrega">
+    <div class="flex items-center justify-between"><h2 id="rev-entrega" class="text-xl">Entrega</h2><a class="link text-sm" href="{% url 'pedidos:checkout_entrega' %}">Alterar</a></div>
+    <p class="mt-3 text-sm leading-relaxed">
+      <strong>{{ endereco.destinatario }}</strong><br>
+      {{ endereco.logradouro }}, {{ endereco.numero }}{% if endereco.complemento %} ({{ endereco.complemento }}){% endif %}<br>
+      {{ endereco.bairro }}, {{ endereco.cidade }}/{{ endereco.uf }}<br>CEP {{ endereco.cep|cep }}
+    </p>
+    <p class="mt-3 text-sm"><strong>{{ carrinho.frete.nome }}</strong>, chega em até {{ carrinho.frete.descricao_prazo }}</p>
+  </section>
+  <section class="painel p-5" aria-labelledby="rev-pagamento">
+    <div class="flex items-center justify-between"><h2 id="rev-pagamento" class="text-xl">Pagamento</h2><a class="link text-sm" href="{% url 'pedidos:checkout_pagamento' %}">Alterar</a></div>
+    <p class="mt-3 flex items-center gap-2 font-semibold"><svg class="icone text-turquesa" aria-hidden="true"><use href="#i-{% if metodo == 'pix' %}pix{% else %}cartao{% endif %}"/></svg>{{ metodo_nome }}</p>
+    <p class="mt-1 text-sm">{% if metodo == "pix" %}{{ total|brl }} à vista, com {{ loja.PIX_DESCONTO_PCT }}% de desconto{% else %}{{ parcelas }}x de {{ valor_parcela.valor_parcela_centavos|brl }} sem juros{% endif %}</p>
+  </section>
+</div>
+
+<form method="post" class="mt-8 flex flex-col gap-5">
+  {% csrf_token %}
+  <div class="campo">
+    <label for="observacao">Recado para a Kamilly <span class="font-normal text-ardosia">(opcional)</span></label>
+    <textarea id="observacao" name="observacao" rows="3" maxlength="300" placeholder="É presente? Quer um bilhete? Conte aqui."></textarea>
+  </div>
+  <label class="flex items-start gap-3 text-sm font-medium">
+    <input type="checkbox" name="aceite" value="1" required class="mt-0.5">
+    <span>Li e aceito a <a class="link" href="{% url 'core:trocas' %}" target="_blank">política de trocas e devoluções</a>. Peças sob encomenda começam a ser feitas depois da aprovação do pagamento.</span>
+  </label>
+  <div class="flex flex-wrap items-center justify-between gap-4 border-t border-creme-3 pt-6">
+    <p><span class="text-sm text-ardosia">Total</span><br><strong class="font-titulo text-3xl numeros-tabulares">{{ total|brl }}</strong></p>
+    <button type="submit" class="btn btn-primario btn-grande"><svg class="icone" aria-hidden="true"><use href="#i-cadeado"/></svg>Confirmar pedido</button>
+  </div>
+</form>
+{% endblock %}

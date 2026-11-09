@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load loja %}
+
+{% block head_title %}Minha conta | Arcana Crochet{% endblock %}
+
+{% block content %}
+<div class="container-loja pt-8">
+  <div class="grid gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
+    <nav aria-label="Minha conta" class="min-w-0 self-start">
+      <p class="font-titulo text-2xl">Olá{% if user.nome_completo %}, {{ user.nome_completo|primeiro_nome }}{% endif %}!</p>
+      <p class="truncate text-sm text-ardosia">{{ user.email }}</p>
+      <ul class="sem-barra mt-5 flex gap-1 overflow-x-auto lg:flex-col">
+        <li><a class="acao-topo whitespace-nowrap {% if secao == 'pedidos' %}bg-creme-2 text-azul{% endif %}" href="{% url 'pedidos:lista' %}" {% if secao == 'pedidos' %}aria-current="page"{% endif %}><svg class="icone" aria-hidden="true"><use href="#i-pacote"/></svg>Meus pedidos</a></li>
+        <li><a class="acao-topo whitespace-nowrap {% if secao == 'enderecos' %}bg-creme-2 text-azul{% endif %}" href="{% url 'pedidos:enderecos' %}" {% if secao == 'enderecos' %}aria-current="page"{% endif %}><svg class="icone" aria-hidden="true"><use href="#i-casa"/></svg>Endereços</a></li>
+        <li><a class="acao-topo whitespace-nowrap" href="{% url 'account_email' %}"><svg class="icone" aria-hidden="true"><use href="#i-email"/></svg>E-mail</a></li>
+        <li><a class="acao-topo whitespace-nowrap" href="{% url 'account_change_password' %}"><svg class="icone" aria-hidden="true"><use href="#i-cadeado"/></svg>Senha e segurança</a></li>
+        <li>
+          <form method="post" action="{% url 'account_logout' %}">{% csrf_token %}
+            <button type="submit" class="acao-topo w-full whitespace-nowrap cursor-pointer"><svg class="icone" aria-hidden="true"><use href="#i-sair"/></svg>Sair</button>
+          </form>
+        </li>
+      </ul>
+    </nav>
+    <div class="min-w-0">{% block conta %}{% endblock %}</div>
+  </div>
+</div>
+{% endblock %}

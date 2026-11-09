@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load dinheiro %}
+
+{% block head_title %}{% if categoria_atual %}{{ categoria_atual.nome }} · {% endif %}Arcana Crochet{% endblock %}
+
+{% block content %}
+  <section class="vitrine">
+    <h1>{% if categoria_atual %}{{ categoria_atual.nome }}{% else %}Peças feitas à mão{% endif %}</h1>
+
+    {% if categorias %}
+      <nav class="filtros" aria-label="Categorias">
+        <a href="{% url 'catalogo:vitrine' %}"
+           hx-get="{% url 'catalogo:vitrine' %}" hx-target="#grade" hx-push-url="true"
+           {% if not categoria_atual %}aria-current="page"{% endif %}>Todas</a>
+        {% for categoria in categorias %}
+          <a href="?categoria={{ categoria.slug }}"
+             hx-get="?categoria={{ categoria.slug }}" hx-target="#grade" hx-push-url="true"
+             {% if categoria == categoria_atual %}aria-current="page"{% endif %}>{{ categoria.nome }}</a>
+        {% endfor %}
+      </nav>
+    {% endif %}
+
+    {% partialdef grade inline %}
+      <div id="grade" class="grade">
+        {% for produto in produtos %}
+          <article class="produto-cartao">
+            <a href="{{ produto.get_absolute_url }}">
+              {% with foto=produto.fotos.all.0 %}
+                {% if foto %}
+                  <img src="{{ foto.imagem.url }}" alt="{{ foto.texto_alternativo }}" loading="lazy"
+                       width="{{ foto.largura }}" height="{{ foto.altura }}">
+                {% else %}
+                  <div class="sem-foto" aria-hidden="true"></div>
+                {% endif %}
+              {% endwith %}
+              <h2>{{ produto.nome }}</h2>
+            </a>
+            <p class="preco">
+              {% if produto.em_promocao %}<s>{{ produto.preco_centavos|brl }}</s>{% endif %}
+              {{ produto.preco_atual_centavos|brl }}
+            </p>
+            {% if produto.status == "esgotado" %}<p class="selo">Esgotado</p>
+            {% elif produto.disponibilidade == "sob_encomenda" %}<p class="selo">Sob encomenda</p>{% endif %}
+          </article>
+        {% empty %}
+          <p class="vazio">Nenhuma peça por aqui ainda.</p>
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+          <p class="paginacao">
+            <a href="?{% if categoria_atual %}categoria={{ categoria_atual.slug }}&{% endif %}page={{ page_obj.next_page_number }}">Ver mais peças</a>
+          </p>
+        {% endif %}
+      </div>
+    {% endpartialdef %}
+  </section>
+{% endblock %}

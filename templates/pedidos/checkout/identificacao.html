@@ -1,0 +1,40 @@
+{% extends "pedidos/checkout/base.html" %}
+
+{% block etapa %}
+<h1 class="text-3xl md:text-4xl">Como você quer continuar?</h1>
+<p class="mt-2 text-ardosia">Precisamos do seu e-mail para enviar a confirmação e o rastreio do pedido.</p>
+
+<div class="mt-8 grid gap-5 md:grid-cols-2">
+  <section class="painel p-6" aria-labelledby="titulo-entrar">
+    <h2 id="titulo-entrar" class="text-2xl">Já tenho conta</h2>
+    <form method="post" action="{% url 'account_login' %}" class="mt-5 flex flex-col gap-4">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ proximo }}">
+      <div class="campo">
+        <label for="login-email">E-mail</label>
+        <input id="login-email" type="email" name="login" autocomplete="email" required>
+      </div>
+      <div class="campo">
+        <label for="login-senha">Senha</label>
+        <input id="login-senha" type="password" name="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primario btn-bloco">Entrar e continuar</button>
+    </form>
+    <div class="mt-5 flex flex-col gap-2 border-t border-creme-3 pt-5 text-sm">
+      <a class="link inline-flex items-center gap-2" href="{% url 'account_request_login_code' %}?next={{ proximo|urlencode }}"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-email"/></svg>Entrar com um código por e-mail, sem senha</a>
+      <a class="link" href="{% url 'account_reset_password' %}">Esqueci minha senha</a>
+    </div>
+  </section>
+
+  <section class="painel-suave p-6" aria-labelledby="titulo-nova">
+    <h2 id="titulo-nova" class="text-2xl">Primeira compra?</h2>
+    <p class="mt-3 text-sm leading-relaxed">Crie sua conta em menos de um minuto. Você confirma o e-mail com um código e volta direto para cá, com a sacola do jeito que deixou.</p>
+    <ul class="mt-4 flex flex-col gap-2 text-sm">
+      <li class="flex items-center gap-2"><svg class="icone text-turquesa" aria-hidden="true"><use href="#i-check"/></svg>Acompanhe o pedido até a sua casa</li>
+      <li class="flex items-center gap-2"><svg class="icone text-turquesa" aria-hidden="true"><use href="#i-check"/></svg>Endereços salvos para a próxima compra</li>
+      <li class="flex items-center gap-2"><svg class="icone text-turquesa" aria-hidden="true"><use href="#i-check"/></svg>Avalie as peças que recebeu</li>
+    </ul>
+    <a class="btn btn-secundario btn-bloco mt-6" href="{% url 'account_signup' %}?next={{ proximo|urlencode }}">Criar minha conta</a>
+  </section>
+</div>
+{% endblock %}

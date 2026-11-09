@@ -1,0 +1,151 @@
+{% extends "pedidos/conta/base.html" %}
+{% load dinheiro loja %}
+
+{% block head_title %}Pedido {{ pedido.codigo }} | Arcana Crochet{% endblock %}
+
+{% block conta %}
+<a class="link text-sm" href="{% url 'pedidos:lista' %}">Todos os pedidos</a>
+
+{% if novo %}
+  <div class="bloco-verde mt-4 rounded-[var(--radius-cartao)] p-6">
+    <p class="flex items-center gap-2 font-titulo text-2xl"><svg class="icone w-7 h-7" aria-hidden="true"><use href="#i-brilho"/></svg>Pedido recebido. Obrigada!</p>
+    <p class="mt-1 opacity-90">Enviamos a confirmação para {{ user.email }}. {% if pedido.status == "aguardando_pagamento" %}Agora é só concluir o pagamento abaixo.{% endif %}</p>
+  </div>
+{% endif %}
+
+<header class="mt-5 flex flex-wrap items-end justify-between gap-3">
+  <div>
+    <h1 class="text-4xl">Pedido {{ pedido.codigo }}</h1>
+    <p class="mt-1 text-sm text-ardosia">Feito em {{ pedido.criado_em|date:"d/m/Y \à\s H:i" }}</p>
+  </div>
+  {% include "componentes/status_pedido.html" %}
+</header>
+
+{# Timeline: Payment approved → Being prepared → Shipped → Delivered #}
+{% if pedido.status != "cancelado" %}
+<section class="painel mt-6 p-5 md:p-7" aria-labelledby="titulo-acompanhamento">
+  <h2 id="titulo-acompanhamento" class="sr-only">Acompanhamento</h2>
+  <ol class="etapas">
+    {% for etapa in pedido.linha_do_tempo %}
+      <li class="etapa {% if etapa.estado == 'concluida' %}etapa--feita{% elif etapa.estado == 'atual' %}etapa--atual{% endif %}" {% if etapa.estado == 'atual' %}aria-current="step"{% endif %}>
+        <span class="etapa__marca">
+          {% if etapa.estado == "concluida" %}<svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-check"/></svg>
+          {% elif etapa.status == "pago" %}<svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-cartao"/></svg>
+          {% elif etapa.status == "em_separacao" %}<svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-agulha"/></svg>
+          {% elif etapa.status == "enviado" %}<svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-caminhao"/></svg>
+          {% else %}<svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-casa"/></svg>{% endif %}
+        </span>
+        <span>{{ etapa.nome }}</span>
+        {% if etapa.data %}<time class="-mt-1 font-normal text-ardosia" datetime="{{ etapa.data|date:'c' }}">{{ etapa.data|date:"d/m, H:i" }}</time>{% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+
+  <div class="mt-7 rounded-2xl bg-creme-2 p-5">
+    {% if pedido.status == "aguardando_pagamento" %}
+      {% if pedido.metodo_pagamento == "pix" %}
+        <h3 class="text-xl">Pague com Pix para confirmar</h3>
+        <p class="mt-1 text-sm">Pague até <strong>{{ pedido.pagar_ate|date:"d/m \à\s H:i" }}</strong>. Depois disso o pedido é cancelado e as peças voltam para a loja.</p>
+        {% if pix %}
+          <div class="mt-4 grid gap-5 sm:grid-cols-[11rem_minmax(0,1fr)] sm:items-center">
+            <div class="mx-auto w-44 overflow-hidden rounded-2xl border border-creme-3 bg-[#fffef6] p-2 sm:mx-0" role="img" aria-label="QR Code do Pix de {{ pedido.total_centavos|brl }}">{{ pix.qr_svg|safe }}</div>
+            <div>
+              <p class="text-sm">Abra o app do seu banco, escolha Pix e leia o QR Code, ou use o código copia e cola:</p>
+              <div class="mt-3 flex gap-2">
+                <label for="pix-copia-cola" class="sr-only">Código Pix copia e cola</label>
+                <input id="pix-copia-cola" readonly value="{{ pix.copia_e_cola }}" class="!rounded-full text-xs">
+                <button type="button" class="btn btn-secundario shrink-0" data-copiar="#pix-copia-cola"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-copiar"/></svg>Copiar</button>
+              </div>
+              <p class="mt-2 text-sm font-semibold">Valor: {{ pedido.total_centavos|brl }}</p>
+              <p class="mt-1 text-sm text-ardosia">O Pix vai para {{ loja.PIX_RECEBEDOR }}. Assim que ele cair na conta, a Kamilly confirma o pagamento e o status do pedido muda aqui, normalmente em poucas horas.</p>
+            </div>
+          </div>
+        {% else %}
+          <p class="mensagem mt-4"><svg class="icone" aria-hidden="true"><use href="#i-pix"/></svg>{% if pode_simular %}Pix não configurado: defina LOJA_PIX_CHAVE, LOJA_PIX_RECEBEDOR e LOJA_PIX_CIDADE.{% else %}O código Pix não está disponível agora. Fale com a gente para concluir o pagamento.{% endif %}</p>
+        {% endif %}
+      {% else %}
+        <h3 class="text-xl">Conclua o pagamento no cartão</h3>
+        <p class="mt-2 text-sm">Você vai digitar os dados do cartão no ambiente seguro do Asaas, em {{ pedido.parcelas }}x sem juros.</p>
+        <button type="button" class="btn btn-primario mt-4" disabled>Pagar {{ pedido.total_centavos|brl }} (em breve)</button>
+      {% endif %}
+      {% if pode_simular %}
+        <form method="post" action="{% url 'pedidos:simular_pagamento' pedido.codigo %}" class="mt-5 border-t border-creme-3 pt-4">
+          {% csrf_token %}
+          <p class="text-xs text-ardosia">Ambiente de desenvolvimento: aprove o pagamento manualmente para testar o fluxo.</p>
+          <button type="submit" class="btn btn-claro mt-2 border border-azul/30">Simular pagamento aprovado</button>
+        </form>
+      {% endif %}
+    {% elif pedido.status == "pago" %}
+      <h3 class="text-xl">Pagamento aprovado</h3>
+      <p class="mt-1 text-sm">Recebemos seu pagamento. {% if pedido.itens.all.0.sob_encomenda %}A Kamilly já vai começar a tecer sua peça.{% else %}Agora sua peça vai ser separada e embalada com carinho.{% endif %}</p>
+    {% elif pedido.status == "em_separacao" %}
+      <h3 class="text-xl">Em separação</h3>
+      <p class="mt-1 text-sm">Sua peça está sendo preparada e embalada. Assim que for postada, o código de rastreio aparece aqui e chega no seu e-mail.</p>
+    {% elif pedido.status == "enviado" %}
+      <h3 class="text-xl">Sua peça está a caminho</h3>
+      <p class="mt-1 text-sm">Postada em {{ pedido.enviado_em|date:"d/m/Y" }} pelo {{ pedido.transportadora }} ({{ pedido.frete_servico }}). Prazo: até {{ pedido.frete_prazo_dias }} dias úteis.</p>
+      <div class="mt-4 flex flex-wrap items-end gap-3">
+        <div class="campo">
+          <label for="codigo-rastreio" class="text-xs">Código de rastreio</label>
+          <input id="codigo-rastreio" readonly value="{{ pedido.codigo_rastreio }}" class="!w-56 !rounded-full font-mono font-bold tracking-wider">
+        </div>
+        <button type="button" class="btn btn-secundario" data-copiar="#codigo-rastreio"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-copiar"/></svg>Copiar</button>
+        <a class="btn btn-primario" href="{{ pedido.url_rastreio|default:'https://rastreamento.correios.com.br/app/index.php' }}" target="_blank" rel="noopener">Rastrear entrega</a>
+      </div>
+    {% elif pedido.status == "entregue" %}
+      <h3 class="text-xl">Entregue em {{ pedido.entregue_em|date:"d/m/Y" }}</h3>
+      <p class="mt-1 text-sm">Esperamos que você ame sua peça! Conte o que achou: sua avaliação ajuda muito quem está escolhendo.</p>
+    {% endif %}
+  </div>
+</section>
+{% else %}
+  <p class="mensagem mensagem--error mt-6"><svg class="icone" aria-hidden="true"><use href="#i-fechar"/></svg>Este pedido foi cancelado em {{ pedido.cancelado_em|date:"d/m/Y" }}. Se o pagamento foi feito, o estorno acontece em até 7 dias úteis.</p>
+{% endif %}
+
+<div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+  <section class="painel self-start p-5" aria-labelledby="titulo-itens">
+    <h2 id="titulo-itens" class="text-xl">Peças</h2>
+    <ul class="mt-3 flex flex-col divide-y divide-creme-3">
+      {% for item in pedido.itens.all %}
+        {% with foto=item.produto|foto_principal %}
+        <li class="grid grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-4 py-4">
+          <span class="arco block !aspect-[4/5]">{% if foto %}<img src="{{ foto.imagem.url }}" alt="" width="64" height="80" loading="lazy">{% endif %}</span>
+          <div class="min-w-0">
+            <a class="font-semibold no-underline hover:underline" href="{{ item.produto.get_absolute_url }}">{{ item.nome }}</a>
+            <p class="text-sm text-ardosia">{% if item.detalhes %}{{ item.detalhes }}, {% endif %}{{ item.quantidade }} × {{ item.preco_unitario_centavos|brl }}{% if item.sob_encomenda %}, sob encomenda{% endif %}</p>
+            {% if pedido.pode_avaliar %}
+              {% if item.id in avaliados %}
+                <p class="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-verde"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-check"/></svg>Você avaliou esta peça</p>
+              {% else %}
+                <a class="btn btn-secundario mt-2 !py-1.5 !px-4 text-sm" href="{% url 'pedidos:avaliar' item.id %}"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-estrela-vazia"/></svg>Avaliar peça</a>
+              {% endif %}
+            {% endif %}
+          </div>
+          <span class="font-semibold numeros-tabulares">{{ item.total_centavos|brl }}</span>
+        </li>
+        {% endwith %}
+      {% endfor %}
+    </ul>
+  </section>
+
+  <div class="flex flex-col gap-6">
+    <section class="painel p-5" aria-labelledby="titulo-valores">
+      <h2 id="titulo-valores" class="text-xl">Valores</h2>
+      <dl class="mt-3 flex flex-col gap-1.5 text-sm">
+        <div class="flex justify-between"><dt>Produtos</dt><dd class="numeros-tabulares">{{ pedido.subtotal_centavos|brl }}</dd></div>
+        {% if pedido.desconto_cupom_centavos %}<div class="flex justify-between text-verde"><dt>Cupom {{ pedido.cupom.codigo }}</dt><dd>−{{ pedido.desconto_cupom_centavos|brl }}</dd></div>{% endif %}
+        {% if pedido.desconto_pix_centavos %}<div class="flex justify-between text-verde"><dt>Desconto Pix</dt><dd>−{{ pedido.desconto_pix_centavos|brl }}</dd></div>{% endif %}
+        <div class="flex justify-between"><dt>Frete ({{ pedido.frete_servico }})</dt><dd class="numeros-tabulares">{% if pedido.frete_centavos %}{{ pedido.frete_centavos|brl }}{% else %}Grátis{% endif %}</dd></div>
+        <div class="mt-2 flex justify-between border-t border-creme-3 pt-3 text-base font-bold"><dt>Total</dt><dd class="numeros-tabulares">{{ pedido.total_centavos|brl }}</dd></div>
+      </dl>
+      <p class="mt-3 text-sm text-ardosia">{{ pedido.get_metodo_pagamento_display }}{% if pedido.metodo_pagamento == "cartao" %}, {{ pedido.parcelas }}x sem juros{% endif %}</p>
+    </section>
+    <section class="painel p-5" aria-labelledby="titulo-endereco">
+      <h2 id="titulo-endereco" class="text-xl">Entrega</h2>
+      <p class="mt-3 text-sm leading-relaxed"><strong>{{ pedido.endereco_entrega.destinatario }}</strong><br>{{ pedido.endereco_resumo }}</p>
+      {% if pedido.observacao %}<p class="mt-3 rounded-xl bg-creme-2 p-3 text-sm"><strong>Seu recado:</strong> {{ pedido.observacao }}</p>{% endif %}
+    </section>
+    <p class="text-sm text-ardosia">Alguma dúvida? <a class="link" href="mailto:{{ loja.EMAIL_ATENDIMENTO }}?subject=Pedido%20{{ pedido.codigo }}">Fale com a gente</a> informando o código do pedido.</p>
+  </div>
+</div>
+{% endblock %}

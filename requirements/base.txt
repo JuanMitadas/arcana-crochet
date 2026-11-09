@@ -1,0 +1,17 @@
+Django==6.1.2
+django-environ==0.14.0
+django-allauth[mfa]==65.21.1
+django-htmx==1.29.0
+django-storages[s3]==1.14.6
+boto3==1.43.123
+psycopg[binary]==3.3.6
+# Aurora DSQL: Django adapter and the connector that signs the IAM token per connection
+aurora-dsql-django==0.7.0
+aurora-dsql-python-connector==0.2.7
+psycopg-pool==3.3.3
+argon2-cffi==25.1.0
+pillow==13.0.0
+# Pix QR code on the order page (pure Python, no dependencies)
+segno==1.6.6
+whitenoise==6.12.0
+gunicorn==26.2.0

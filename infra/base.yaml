@@ -1,0 +1,153 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Arcana Crochet: base stack, created once by hand (see docs/deploy.md). Image
+  repository (ECR) and the role GitHub Actions assumes to deploy, with no access key
+  stored in GitHub.
+
+Parameters:
+  Repositorio:
+    Type: String
+    Default: JuanMitadas/arcana-crochet
+    Description: GitHub repository (owner/name) allowed to deploy.
+  AmbienteGithub:
+    Type: String
+    Default: producao
+    Description: GitHub environment whose workflows may assume the role.
+  CriarProvedorOidc:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      "false" if the account already has the token.actions.githubusercontent.com
+      provider (there can only be one per account).
+
+Conditions:
+  DeveCriarProvedor: !Equals [!Ref CriarProvedorOidc, "true"]
+
+Resources:
+  ProvedorGithub:
+    Type: AWS::IAM::OIDCProvider
+    Condition: DeveCriarProvedor
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+
+  # Lambda images. Only the 3 most recent are kept so storage costs don't pile up.
+  Imagens:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: arcana-crochet
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep only the 3 most recent images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 3
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
+
+  PapelDeploy:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: arcana-github-deploy
+      Description: Assumed by GitHub Actions (OIDC) to deploy and run migrations.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${Repositorio}:environment:${AmbienteGithub}
+      Policies:
+        - PolicyName: deploy-arcana
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # Services used by the store stack (infra/template.yaml). dsql:* also
+              # lets the deploy connect to the database to run the migrations.
+              - Effect: Allow
+                Action:
+                  - cloudformation:*
+                  - lambda:*
+                  - cloudfront:*
+                  - scheduler:*
+                  - logs:*
+                  - s3:*
+                  - dsql:*
+                  - backup:*
+                  - backup-storage:MountCapsule
+                Resource: "*"
+              # The backup vault is encrypted with the AWS managed key for AWS Backup.
+              - Effect: Allow
+                Action:
+                  - kms:CreateGrant
+                  - kms:Decrypt
+                  - kms:DescribeKey
+                  - kms:GenerateDataKey
+                  - kms:RetireGrant
+                Resource: "*"
+                Condition:
+                  StringLike:
+                    kms:ViaService: !Sub backup.${AWS::Region}.amazonaws.com
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:BatchGetImage
+                  - ecr:CompleteLayerUpload
+                  - ecr:DescribeImages
+                  - ecr:DescribeRepositories
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:GetRepositoryPolicy
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:SetRepositoryPolicy
+                  - ecr:UploadLayerPart
+                Resource: !GetAtt Imagens.Arn
+              # The stack creates its own roles (Lambda, scheduler, backup); only arcana-*.
+              - Effect: Allow
+                Action:
+                  - iam:AttachRolePolicy
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:DeleteRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:GetRole
+                  - iam:GetRolePolicy
+                  - iam:PassRole
+                  - iam:PutRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:UpdateAssumeRolePolicy
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/arcana-*
+              # Secrets read by CloudFormation ({{resolve:ssm:...}}).
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: !Sub arn:${AWS::Partition}:ssm:*:${AWS::AccountId}:parameter/arcana/*
+
+Outputs:
+  PapelDeployArn:
+    Description: Put this in the AWS_ROLE_ARN secret of the "producao" environment on GitHub.
+    Value: !GetAtt PapelDeploy.Arn
+  RepositorioImagens:
+    Description: ECR repository for the Lambda images.
+    Value: !GetAtt Imagens.RepositoryUri

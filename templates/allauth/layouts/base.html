@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% comment %}
+  Faz as telas do allauth (login, cadastro, código por e-mail, senha, MFA) usarem o
+  layout da loja. As páginas do allauth preenchem o bloco "content"; aqui ele é
+  envolvido por um cartão centralizado (estilos em .conta-allauth).
+{% endcomment %}
+{% load static %}
+{% block main %}
+  <div class="container-loja py-10 md:py-14">
+    <div class="conta-allauth painel relative overflow-hidden p-6 md:p-10">
+      <img src="{% static 'img/marca/simbolo-azul.png' %}" alt="" width="360" height="355" class="pointer-events-none absolute -top-6 -right-8 w-32 opacity-[0.07]">
+      {{ block.super }}
+    </div>
+  </div>
+{% endblock %}

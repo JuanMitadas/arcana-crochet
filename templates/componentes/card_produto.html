@@ -1,0 +1,30 @@
+{% load dinheiro loja %}
+{% with foto=produto|foto_principal desconto=produto|desconto_pct %}
+<article class="card-produto">
+  <div class="arco">
+    {% if foto %}
+      <img src="{{ foto.imagem.url }}" alt="{{ foto.texto_alternativo }}" width="{{ foto.largura|default:480 }}" height="{{ foto.altura|default:600 }}" loading="lazy" decoding="async">
+    {% endif %}
+  </div>
+  <div class="card-produto__selos">
+    {% if desconto %}<span class="selo-desconto" aria-label="{{ desconto }}% de desconto">-{{ desconto }}%</span>{% else %}<span></span>{% endif %}
+    {% if produto.status == "esgotado" %}
+      <span class="etiqueta etiqueta--escura">Esgotado</span>
+    {% elif produto.disponibilidade == "sob_encomenda" %}
+      <span class="etiqueta">Sob encomenda</span>
+    {% endif %}
+  </div>
+  <div class="flex flex-col gap-1 px-1">
+    <h3 class="m-0"><a class="card-produto__nome" href="{{ produto.get_absolute_url }}">{{ produto.nome }}</a></h3>
+    {% if produto.total_avaliacoes %}
+      <p class="flex items-center gap-1.5 text-xs text-ardosia">{% estrelas produto.nota_media %}<span>({{ produto.total_avaliacoes }})</span></p>
+    {% endif %}
+    <p class="mt-1 leading-tight">
+      {% if produto.em_promocao %}<span class="preco-de">{{ produto.preco_centavos|brl }}</span><br>{% endif %}
+      <span class="preco">{{ produto.preco_atual_centavos|brl }}</span>
+    </p>
+    <p class="preco-pix">{{ produto.preco_atual_centavos|pix }} no Pix</p>
+    <p class="parcelas">ou {{ produto.preco_atual_centavos|parcelas }}</p>
+  </div>
+</article>
+{% endwith %}

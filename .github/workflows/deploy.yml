@@ -1,0 +1,117 @@
+name: Deploy to AWS
+
+# Publishes the store on every push to main (production) or when run by hand.
+# One-time setup in docs/deploy.md: a "producao" environment on GitHub with the
+# AWS_ROLE_ARN secret and the DOMINIO and CERTIFICADO_ARN variables (BANCO_RESTAURADO
+# only after restoring the database from a backup).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write # to assume the AWS role through OIDC, with no stored key
+  contents: read
+
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: sa-east-1
+  STACK: arcana-prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: producao
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements/*.txt
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Install dependencies
+        run: pip install -r requirements/base.txt
+
+      - name: Build the Lambda image
+        run: sam build --template-file infra/template.yaml
+
+      # Migrations run before the new code goes live. On the very first deploy the
+      # database doesn't exist yet, so they run right after the stack is created.
+      - name: Find the database
+        id: banco
+        env:
+          BANCO_RESTAURADO: ${{ vars.BANCO_RESTAURADO }}
+        run: |
+          if [ -n "$BANCO_RESTAURADO" ]; then
+            endpoint="$BANCO_RESTAURADO.dsql.$AWS_REGION.on.aws"
+          else
+            endpoint=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+              --query "Stacks[0].Outputs[?OutputKey=='BancoEndpoint'].OutputValue" \
+              --output text 2>/dev/null || true)
+          fi
+          if [ "$endpoint" = "None" ]; then endpoint=""; fi
+          echo "endpoint=$endpoint" >> "$GITHUB_OUTPUT"
+
+      - name: Apply migrations (Aurora DSQL)
+        if: steps.banco.outputs.endpoint != ''
+        env:
+          DSQL_ENDPOINT: ${{ steps.banco.outputs.endpoint }}
+          SECRET_KEY: only-for-migrations-${{ github.run_id }}
+        run: python manage.py migrate --noinput
+
+      - name: Publish
+        env:
+          DOMINIO: ${{ vars.DOMINIO }}
+          CERTIFICADO_ARN: ${{ vars.CERTIFICADO_ARN }}
+          BANCO_RESTAURADO: ${{ vars.BANCO_RESTAURADO }}
+        run: |
+          repositorio=$(aws cloudformation describe-stacks --stack-name arcana-base \
+            --query "Stacks[0].Outputs[?OutputKey=='RepositorioImagens'].OutputValue" --output text)
+          parametros=("Ambiente=prod")
+          if [ -n "$DOMINIO" ]; then
+            parametros+=("Dominio=$DOMINIO" "CertificadoArn=$CERTIFICADO_ARN")
+          fi
+          if [ -n "$BANCO_RESTAURADO" ]; then
+            parametros+=("BancoRestaurado=$BANCO_RESTAURADO")
+          fi
+          sam deploy \
+            --stack-name "$STACK" \
+            --region "$AWS_REGION" \
+            --image-repository "$repositorio" \
+            --resolve-s3 \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "${parametros[@]}"
+
+      - name: Apply migrations (first deploy)
+        if: steps.banco.outputs.endpoint == ''
+        env:
+          SECRET_KEY: only-for-migrations-${{ github.run_id }}
+        run: |
+          DSQL_ENDPOINT=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query "Stacks[0].Outputs[?OutputKey=='BancoEndpoint'].OutputValue" --output text)
+          export DSQL_ENDPOINT
+          python manage.py migrate --noinput
+
+      - name: Summary
+        run: |
+          endereco=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query "Stacks[0].Outputs[?OutputKey=='EnderecoSite'].OutputValue" --output text)
+          echo "### Store published: $endereco" >> "$GITHUB_STEP_SUMMARY"
+          curl -fsS --retry 5 --retry-delay 5 "$endereco/healthz/?banco=1"

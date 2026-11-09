@@ -1,0 +1,363 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Arcana Crochet: Django store on AWS Lambda behind CloudFront. Photos on S3,
+  database on Aurora DSQL, secrets in SSM Parameter Store, daily backups in AWS Backup.
+
+  visitor → CloudFront ─┬─ /media/*  → S3 (photos)
+                        ├─ /static/* → Lambda (long cache)
+                        └─ rest      → Lambda (no cache) → Aurora DSQL
+
+Parameters:
+  Ambiente:
+    Type: String
+    Default: prod
+    AllowedPattern: "[a-z]+"
+    Description: Used in resource names and in the secrets path (/arcana/<environment>/).
+  Dominio:
+    Type: String
+    Default: ""
+    Description: >-
+      Custom domain, e.g. arcanacrochet.com.br (www is included). Empty: the site is
+      only served on its *.cloudfront.net address.
+  CertificadoArn:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|^arn:aws:acm:us-east-1:[0-9]{12}:certificate/.+$"
+    ConstraintDescription: Use an ACM certificate created in the us-east-1 region.
+    Description: >-
+      ACM certificate in us-east-1 covering the domain and www. Required when
+      Dominio is set.
+
+  BancoRestaurado:
+    Type: String
+    Default: ""
+    AllowedPattern: "^[a-z0-9]*$"
+    Description: >-
+      Identifier of an Aurora DSQL cluster restored from a backup. When set, the site
+      (and the daily backup) switch to that cluster; the original stays untouched.
+      Empty: use the cluster created by this stack.
+
+Conditions:
+  TemDominio: !Not [!Equals [!Ref Dominio, ""]]
+  UsaBancoRestaurado: !Not [!Equals [!Ref BancoRestaurado, ""]]
+
+Rules:
+  DominioExigeCertificado:
+    RuleCondition: !Not [!Equals [!Ref Dominio, ""]]
+    Assertions:
+      - Assert: !Not [!Equals [!Ref CertificadoArn, ""]]
+        AssertDescription: With a custom domain, set CertificadoArn (ACM in us-east-1).
+
+Resources:
+  # --- Photos -----------------------------------------------------------------
+
+  Midia:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      # Old versions are kept for 30 days, in case a photo is deleted by mistake.
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: apagar-versoes-antigas
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+  MidiaPolitica:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Midia
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: LeituraPeloCloudFront
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub ${Midia.Arn}/media/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribuicao}
+
+  # --- Database -------------------------------------------------------------
+
+  # Serverless PostgreSQL-compatible database: no instance to size, no password (the
+  # Lambda connects with a short-lived IAM token) and no cold start. Billed per use.
+  Banco:
+    Type: AWS::DSQL::Cluster
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DeletionProtectionEnabled: true
+      Tags:
+        - Key: Name
+          Value: !Sub arcana-${Ambiente}
+
+  # Daily snapshot of the database, kept for 30 days. Restoring creates a new cluster
+  # (see docs/deploy.md).
+  CofreBackup:
+    Type: AWS::Backup::BackupVault
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BackupVaultName: !Sub arcana-${Ambiente}
+
+  PlanoBackup:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub arcana-${Ambiente}-diario
+        BackupPlanRule:
+          - RuleName: diario
+            TargetBackupVault: !Ref CofreBackup
+            # 06:30 UTC = 03:30 in São Paulo, when the store is quiet.
+            ScheduleExpression: cron(30 6 * * ? *)
+            StartWindowMinutes: 60
+            CompletionWindowMinutes: 180
+            Lifecycle:
+              DeleteAfterDays: 30
+
+  PapelBackup:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores
+
+  SelecaoBackup:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref PlanoBackup
+      BackupSelection:
+        SelectionName: banco
+        IamRoleArn: !GetAtt PapelBackup.Arn
+        Resources:
+          - !If [UsaBancoRestaurado, !Sub "arn:${AWS::Partition}:dsql:${AWS::Region}:${AWS::AccountId}:cluster/${BancoRestaurado}", !GetAtt Banco.ResourceArn]
+
+  # --- Application ------------------------------------------------------------
+
+  SiteLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/arcana-${Ambiente}-site
+      RetentionInDays: 14
+
+  Site:
+    Type: AWS::Serverless::Function
+    Metadata:
+      DockerContext: ..
+      Dockerfile: docker/Dockerfile
+      DockerTag: latest
+    Properties:
+      FunctionName: !Sub arcana-${Ambiente}-site
+      Description: Arcana Crochet store (Django + Lambda Web Adapter)
+      PackageType: Image
+      Architectures: [x86_64]
+      # More memory also means more CPU, which shortens Django's cold start.
+      MemorySize: 1024
+      Timeout: 30
+      LoggingConfig:
+        LogGroup: !Ref SiteLogs
+        LogFormat: Text
+      Environment:
+        Variables:
+          AWS_SSM_PREFIX: !Sub /arcana/${Ambiente}/
+          DEBUG: "0"
+          # CloudFront only forwards requests for its own domains, and the
+          # X-Arcana-Origem header check guarantees every request went through it.
+          ALLOWED_HOSTS: "*"
+          USE_X_FORWARDED_HOST: "1"
+          TRUSTED_CLIENT_IP_HEADER: X-Arcana-Ip
+          MIDIA_BUCKET: !Ref Midia
+          CACHE_URL: dbcache://cache_django
+          DSQL_ENDPOINT: !If [UsaBancoRestaurado, !Sub "${BancoRestaurado}.dsql.${AWS::Region}.on.aws", !GetAtt Banco.Endpoint]
+      FunctionUrlConfig:
+        AuthType: NONE
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref Midia
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParametersByPath
+                - ssm:GetParameters
+                - ssm:GetParameter
+              Resource:
+                - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/arcana/${Ambiente}
+                - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/arcana/${Ambiente}/*
+            # Sign the IAM token used as the database password.
+            - Effect: Allow
+              Action: dsql:DbConnectAdmin
+              Resource: !If [UsaBancoRestaurado, !Sub "arn:${AWS::Partition}:dsql:${AWS::Region}:${AWS::AccountId}:cluster/${BancoRestaurado}", !GetAtt Banco.ResourceArn]
+      Events:
+        # Keeps one instance warm: the Lambda Web Adapter forwards this event to
+        # /healthz/ (AWS_LWA_PASS_THROUGH_PATH), which answers without the database.
+        Aquecimento:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(5 minutes)
+            Input: '{"aquecimento": true}'
+            RetryPolicy:
+              MaximumRetryAttempts: 0
+        # Cancels orders not paid within LOJA_PRAZO_PAGAMENTO_HORAS (see apps/core/views.py).
+        PedidosVencidos:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(1 hour)
+            Input: '{"tarefa": "cancelar_pedidos_vencidos"}'
+            RetryPolicy:
+              MaximumRetryAttempts: 2
+
+  # --- CloudFront -----------------------------------------------------------
+
+  AcessoMidia:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub arcana-${Ambiente}-midia
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # Runs at the edge before every request to Django (free up to 2 million/month):
+  # redirects www to the main domain, passes on the domain the visitor typed and
+  # records the visitor's IP (overwriting whatever the visitor sent in those headers).
+  FuncaoBorda:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub arcana-${Ambiente}-borda
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Redirect www and forward the visitor's host and IP
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var req = event.request;
+          var host = req.headers.host ? req.headers.host.value : "";
+          if (host.indexOf("www.") === 0) {
+            var qs = [];
+            for (var k in req.querystring) {
+              var v = req.querystring[k];
+              qs.push(encodeURIComponent(k) + (v.value ? "=" + encodeURIComponent(v.value) : ""));
+            }
+            return {
+              statusCode: 301,
+              statusDescription: "Moved Permanently",
+              headers: { location: { value: "https://" + host.substring(4) + req.uri + (qs.length ? "?" + qs.join("&") : "") } }
+            };
+          }
+          req.headers["x-forwarded-host"] = { value: host };
+          req.headers["x-arcana-ip"] = { value: event.viewer.ip };
+          return req;
+        }
+
+  Distribuicao:
+    Type: AWS::CloudFront::Distribution
+    Metadata:
+      cfn-lint:
+        config:
+          # The certificate is only used with a domain (rule DominioExigeCertificado);
+          # cfn-lint evaluates the empty default even in the unused branch of the !If.
+          ignore_checks: [W1030]
+    Properties:
+      DistributionConfig:
+        Comment: !Sub Arcana Crochet (${Ambiente})
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        # PriceClass_All includes the South American edge locations (the others don't).
+        PriceClass: PriceClass_All
+        Aliases: !If [TemDominio, [!Ref Dominio, !Sub "www.${Dominio}"], !Ref AWS::NoValue]
+        ViewerCertificate: !If
+          - TemDominio
+          - AcmCertificateArn: !Ref CertificadoArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+        Origins:
+          - Id: lambda
+            # https://<id>.lambda-url.<region>.on.aws/ → <id>.lambda-url.<region>.on.aws
+            DomainName: !Select [2, !Split ["/", !GetAtt SiteUrl.FunctionUrl]]
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: [TLSv1.2]
+              OriginReadTimeout: 30
+            OriginCustomHeaders:
+              - HeaderName: X-Arcana-Origem
+                HeaderValue: !Sub "{{resolve:ssm:/arcana/${Ambiente}/ORIGEM_SEGREDO}}"
+          - Id: midia
+            DomainName: !GetAtt Midia.RegionalDomainName
+            OriginAccessControlId: !GetAtt AcessoMidia.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: lambda
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          # AWS managed: CachingDisabled and AllViewerExceptHostHeader (the
+          # visitor's cookies, query string and headers reach Django).
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt FuncaoBorda.FunctionMetadata.FunctionARN
+        CacheBehaviors:
+          # Files with a hash in their name (collectstatic + WhiteNoise): long cache.
+          - PathPattern: /static/*
+            TargetOriginId: lambda
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized
+          - PathPattern: /media/*
+            TargetOriginId: midia
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized
+
+Outputs:
+  EnderecoSite:
+    Description: Store address on CloudFront.
+    Value: !Sub https://${Distribuicao.DomainName}
+  DominioCloudFront:
+    Description: Point the custom domain (ALIAS/CNAME record) to this address.
+    Value: !GetAtt Distribuicao.DomainName
+  DistribuicaoId:
+    Value: !Ref Distribuicao
+  FuncaoSite:
+    Value: !Ref Site
+  BucketMidia:
+    Value: !Ref Midia
+  BancoEndpoint:
+    Description: Aurora DSQL endpoint in use (DSQL_ENDPOINT for migrations and manage.py).
+    Value: !If [UsaBancoRestaurado, !Sub "${BancoRestaurado}.dsql.${AWS::Region}.on.aws", !GetAtt Banco.Endpoint]
+  CofreBackup:
+    Description: AWS Backup vault with the daily database snapshots.
+    Value: !Ref CofreBackup
