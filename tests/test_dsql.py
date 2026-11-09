@@ -161,3 +161,44 @@ def test_motor_dsql_cria_indices_unicos_condicionais_com_async():
 
     sql = DatabaseWrapper.SchemaEditorClass.sql_create_unique_index
     assert sql.startswith("CREATE UNIQUE INDEX ASYNC ") and "%(condition)s" in sql
+
+
+class TestDdlRepetida:
+    """DSQL may reject a DDL statement right after another schema change (OC001)."""
+
+    def _editor(self, monkeypatch, falhas, em_transacao=False):
+        from aurora_dsql_django import schema
+
+        from config.dsql import base
+
+        chamadas = []
+
+        def execute_pai(self, sql, params=()):
+            chamadas.append(sql)
+            if len(chamadas) <= falhas:
+                raise OperationalError("schema has been updated by another transaction (OC001)")
+
+        monkeypatch.setattr(schema.DatabaseSchemaEditor, "execute", execute_pai)
+        monkeypatch.setattr(base.time, "sleep", lambda segundos: None)
+        editor = base.DatabaseSchemaEditor.__new__(base.DatabaseSchemaEditor)
+        editor.connection = type("Conexao", (), {"in_atomic_block": em_transacao})()
+        return editor, chamadas
+
+    def test_repete_o_comando(self, monkeypatch):
+        editor, chamadas = self._editor(monkeypatch, falhas=2)
+        editor.execute("CREATE TABLE x (id int)")
+        assert len(chamadas) == 3
+
+    def test_desiste_depois_das_tentativas(self, monkeypatch):
+        from config.dsql.base import TENTATIVAS_DDL
+
+        editor, chamadas = self._editor(monkeypatch, falhas=99)
+        with pytest.raises(OperationalError):
+            editor.execute("CREATE TABLE x (id int)")
+        assert len(chamadas) == TENTATIVAS_DDL
+
+    def test_dentro_de_transacao_nao_repete(self, monkeypatch):
+        editor, chamadas = self._editor(monkeypatch, falhas=1, em_transacao=True)
+        with pytest.raises(OperationalError):
+            editor.execute("CREATE TABLE x (id int)")
+        assert len(chamadas) == 1

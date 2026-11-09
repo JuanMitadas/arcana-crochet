@@ -7,8 +7,12 @@ Description: >-
 Parameters:
   Repositorio:
     Type: String
-    Default: JuanMitadas/arcana-crochet
-    Description: GitHub repository (owner/name) allowed to deploy.
+    Default: JuanMitadas@130318812/arcana-crochet@1443167833
+    Description: >-
+      GitHub repository allowed to deploy, as GitHub's OIDC token names it. Repositories
+      created after July 15, 2026 use immutable ids: <owner>@<owner-id>/<repo>@<repo-id>
+      (gh api repos/<owner>/<repo> --jq '"\(.owner.login)@\(.owner.id)/\(.name)@\(.id)"').
+      Older repositories use plain <owner>/<repo>.
   AmbienteGithub:
     Type: String
     Default: producao
@@ -137,6 +141,16 @@ Resources:
                   - iam:UntagRole
                   - iam:UpdateAssumeRolePolicy
                 Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/arcana-*
+              # The first Aurora DSQL cluster and backup vault in an account create the
+              # services' own roles (AWSServiceRoleForAuroraDsql, AWSServiceRoleForBackup).
+              - Effect: Allow
+                Action: iam:CreateServiceLinkedRole
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    iam:AWSServiceName:
+                      - dsql.amazonaws.com
+                      - backup.amazonaws.com
               # Secrets read by CloudFormation ({{resolve:ssm:...}}).
               - Effect: Allow
                 Action:
