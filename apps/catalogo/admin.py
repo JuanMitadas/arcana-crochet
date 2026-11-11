@@ -2,6 +2,7 @@ from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from unfold.admin import ModelAdmin, TabularInline
 
 from apps.core.templatetags.dinheiro import brl
 
@@ -17,7 +18,7 @@ from .models import (
 
 
 @admin.register(Categoria)
-class CategoriaAdmin(admin.ModelAdmin):
+class CategoriaAdmin(ModelAdmin):
     list_display = ["__str__", "ordem", "ativa"]
     fields = ["nome", "slug", "pai", "descricao", "imagem", "ordem", "ativa"]
     list_editable = ["ordem", "ativa"]
@@ -25,27 +26,27 @@ class CategoriaAdmin(admin.ModelAdmin):
     search_fields = ["nome"]
 
 
-class VariacaoInline(admin.TabularInline):
+class VariacaoInline(TabularInline):
     model = ProdutoVariacao
     extra = 1
     fields = ["sku", "cor", "cor_hex", "tamanho", "preco_ajuste_centavos", "estoque", "ativa"]
     readonly_fields = ["estoque"]
 
 
-class FotoInline(admin.TabularInline):
+class FotoInline(TabularInline):
     model = ProdutoFoto
     extra = 1
     fields = ["imagem", "texto_alternativo", "variacao", "ordem"]
 
 
-class EspecificacaoInline(admin.TabularInline):
+class EspecificacaoInline(TabularInline):
     model = ProdutoEspecificacao
     extra = 2
     fields = ["nome", "valor", "ordem"]
 
 
 @admin.register(Produto)
-class ProdutoAdmin(admin.ModelAdmin):
+class ProdutoAdmin(ModelAdmin):
     list_display = ["nome", "categoria", "preco", "status", "destaque", "disponibilidade"]
     list_filter = ["status", "categoria", "disponibilidade", "destaque"]
     search_fields = ["nome", "descricao", "variacoes__sku"]
@@ -118,7 +119,7 @@ class MovimentacaoForm(forms.ModelForm):
 
 
 @admin.register(MovimentacaoEstoque)
-class MovimentacaoEstoqueAdmin(admin.ModelAdmin):
+class MovimentacaoEstoqueAdmin(ModelAdmin):
     """Recording a movement here is how stock is changed from the admin."""
 
     form = MovimentacaoForm
@@ -147,7 +148,7 @@ class MovimentacaoEstoqueAdmin(admin.ModelAdmin):
 
 
 @admin.register(ProdutoVariacao)
-class ProdutoVariacaoAdmin(admin.ModelAdmin):
+class ProdutoVariacaoAdmin(ModelAdmin):
     list_display = ["sku", "produto", "cor", "tamanho", "estoque", "estoque_reservado", "ativa"]
     list_filter = ["ativa"]
     search_fields = ["sku", "produto__nome", "cor"]

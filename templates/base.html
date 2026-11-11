@@ -19,6 +19,7 @@
   <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
   {% block cabecalho %}
+  {% if loja.FAIXA_VANTAGENS %}
   <div class="faixa">
     <ul class="container-loja flex items-center justify-center gap-x-6 gap-y-1 py-2 flex-wrap text-center">
       <li class="flex items-center gap-1.5"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-pix"/></svg>{{ loja.PIX_DESCONTO_PCT }}% de desconto no Pix</li>
@@ -26,9 +27,10 @@
       <li class="hidden md:flex items-center gap-1.5"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-caminhao"/></svg>Frete grátis acima de {{ loja.FRETE_GRATIS_A_PARTIR_CENTAVOS|brl }}</li>
     </ul>
   </div>
+  {% endif %}
 
-  <header class="topo sticky top-0 z-30">
-    <div class="container-loja grid grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-3 py-3 md:grid-cols-[auto_minmax(0,36rem)_auto] md:justify-between md:py-4">
+  <header class="topo sticky top-0 z-30" data-encolhe>
+    <div class="topo__linha container-loja grid grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-3 py-3 md:grid-cols-[auto_minmax(0,36rem)_auto] md:justify-between md:py-4">
       <details class="menu-mobile lg:hidden" data-menu-mobile>
         <summary class="acao-topo -ml-2 list-none cursor-pointer" aria-label="Abrir menu de categorias">
           <svg class="icone w-6 h-6" aria-hidden="true"><use href="#i-menu"/></svg>
@@ -65,7 +67,7 @@
       </details>
 
       <a href="{% url 'catalogo:home' %}" class="block justify-self-start" aria-label="Arcana Crochet, página inicial">
-        <img src="{% static 'img/marca/nome-azul.png' %}" alt="Arcana Crochet" width="172" height="51" class="h-9 w-auto md:h-12">
+        <img src="{% static 'img/marca/nome-azul.png' %}" alt="Arcana Crochet" width="172" height="51" class="topo__logo h-9 w-auto md:h-12">
       </a>
 
       <form action="{% url 'catalogo:busca' %}" method="get" role="search" class="busca col-span-3 row-start-2 md:col-span-1 md:row-start-1 md:col-start-2">
@@ -75,6 +77,15 @@
       </form>
 
       <nav class="flex items-center gap-1 justify-self-end" aria-label="Sua conta">
+        <button type="button" class="acao-topo cursor-pointer md:hidden" data-abrir-busca aria-label="Buscar peças" hidden>
+          <svg class="icone w-6 h-6" aria-hidden="true"><use href="#i-busca"/></svg>
+        </button>
+        {% if user.is_staff %}
+          <a class="acao-topo" href="{% url 'gestao:inicio' %}" aria-label="Gestão da loja">
+            <svg class="icone w-6 h-6" aria-hidden="true"><use href="#i-agulha"/></svg>
+            <span class="hidden lg:inline">Gestão</span>
+          </a>
+        {% endif %}
         {% if user.is_authenticated %}
           <a class="acao-topo" href="{% url 'pedidos:lista' %}">
             <svg class="icone w-6 h-6" aria-hidden="true"><use href="#i-usuario"/></svg>
@@ -169,25 +180,10 @@
         </div>
       </div>
 
-      <div class="mt-12 grid gap-6 border-t border-creme/20 pt-8 lg:grid-cols-2 lg:items-center">
-        <div>
-          <h2 class="sr-only">Formas de pagamento</h2>
-          <ul class="flex flex-wrap gap-2" aria-label="Formas de pagamento">
-            <li class="selo-rodape"><svg class="icone" aria-hidden="true"><use href="#i-pix"/></svg>Pix</li>
-            <li class="selo-rodape"><svg class="icone" aria-hidden="true"><use href="#i-cartao"/></svg>Cartão de crédito</li>
-          </ul>
-        </div>
-        <div>
-          <h2 class="sr-only">Segurança</h2>
-          <ul class="flex flex-wrap gap-2 lg:justify-end">
-            <li class="selo-rodape"><svg class="icone" aria-hidden="true"><use href="#i-cadeado"/></svg>Site seguro (HTTPS)</li>
-            <li class="selo-rodape"><svg class="icone" aria-hidden="true"><use href="#i-escudo"/></svg>Pagamento processado pelo Asaas</li>
-            <li class="selo-rodape"><svg class="icone" aria-hidden="true"><use href="#i-troca"/></svg>7 dias para trocar</li>
-          </ul>
-        </div>
+      <div class="mt-12 flex flex-col gap-2 border-t border-creme/20 pt-6 text-sm md:flex-row md:items-baseline md:justify-between md:gap-8">
+        <p>Pague com Pix ou cartão de crédito. Não gostou? Você tem <a class="underline underline-offset-4" href="{% url 'core:trocas' %}">7 dias para trocar</a>.</p>
+        <p class="text-xs opacity-70">© {% now "Y" %} Arcana Crochet. Seus dados são tratados conforme a LGPD.</p>
       </div>
-
-      <p class="mt-8 text-xs opacity-70">© {% now "Y" %} Arcana Crochet. Seus dados são tratados conforme a LGPD e nunca guardamos os números do seu cartão.</p>
     </div>
   </footer>
   {% endblock rodape %}

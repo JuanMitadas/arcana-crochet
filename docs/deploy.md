@@ -126,7 +126,7 @@ Pix goes straight to the store's bank account, with no payment provider in betwe
 
 1. After the review step, the order page shows a QR code and the "copia e cola" text with the order amount and the order code (`ARC-XXXXXX`) as the identifier.
 2. The customer pays; the money lands in the account. **The site isn't told about it.**
-3. Check the bank app, find the payment by amount (the bank usually shows the identifier too) and approve it in the admin: **Pedidos** → select the order → action **Aprovar pagamento (manual)**. The reserved pieces become a sale and the customer sees "Pagamento aprovado".
+3. Check the bank app, find the payment by amount (the bank usually shows the identifier too) and confirm it in the management panel: `/gestao/` → **Pix recebido: confirmar** (or, in the admin, **Pedidos** → select the order → **Aprovar pagamento (manual)**). The reserved pieces become a sale and the customer sees "Pagamento aprovado".
 4. Orders not paid within `LOJA_PRAZO_PAGAMENTO_HORAS` (24 by default) are cancelled every hour by an EventBridge schedule, and their pieces go back on sale. The **pagar até** column in the admin shows each deadline.
 
 If a Pix arrives after the order was cancelled, refund it from the bank app or ask the customer to place the order again. Card payments (Asaas) come in a later phase.

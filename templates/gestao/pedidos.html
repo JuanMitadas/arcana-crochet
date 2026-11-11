@@ -1,0 +1,59 @@
+{% extends "gestao/base.html" %}
+{% load dinheiro loja %}
+
+{% block titulo %}Pedidos{% endblock %}
+
+{% block gestao %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <h1 class="text-4xl">Pedidos</h1>
+  <form method="get" role="search" class="flex gap-2">
+    <input type="hidden" name="etapa" value="{{ etapa }}">
+    <label for="busca-pedido" class="sr-only">Buscar pedido</label>
+    <input id="busca-pedido" type="search" name="q" value="{{ termo }}" placeholder="Código, nome ou e-mail" class="!rounded-full">
+    <button type="submit" class="btn btn-secundario">Buscar</button>
+  </form>
+</div>
+
+<ul class="mt-5 flex flex-wrap gap-2" aria-label="Etapas">
+  {% for chave, nome, total in etapas %}
+    <li><a class="chip pr-3 {% if etapa == chave %}!bg-turquesa !text-creme{% endif %}" href="?etapa={{ chave }}" {% if etapa == chave %}aria-current="page"{% endif %}>{{ nome }} <span class="numeros-tabulares opacity-80">{{ total }}</span></a></li>
+  {% endfor %}
+  <li><a class="chip pr-3 {% if etapa == 'todos' %}!bg-turquesa !text-creme{% endif %}" href="?etapa=todos">Todos</a></li>
+</ul>
+
+{% if etapa == "pagar" %}<p class="mt-4 text-sm text-ardosia">Confira no app do banco se o Pix caiu: o valor é o total do pedido e o identificador é o código. Pedidos não pagos no prazo são cancelados sozinhos.</p>{% endif %}
+
+{% if pagina.object_list %}
+  <ul class="mt-5 flex flex-col gap-3">
+    {% for pedido in pagina %}
+      <li class="painel p-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <a class="text-lg font-bold" href="{% url 'gestao:pedido' pedido.codigo %}">{{ pedido.codigo }}</a>
+              {% include "componentes/status_pedido.html" %}
+            </div>
+            <p class="text-sm text-ardosia">{{ pedido.cliente.nome_completo|default:pedido.cliente.email }} · {{ pedido.criado_em|date:"d/m H:i" }} · {{ pedido.itens.all|length }} ite{{ pedido.itens.all|length|pluralize:"m,ns" }}</p>
+            {% if pedido.status == "aguardando_pagamento" %}<p class="text-sm font-semibold text-azul">Vence {{ pedido.pagar_ate|date:"d/m \à\s H:i" }}</p>{% endif %}
+            {% if pedido.status == "enviado" %}<p class="text-sm">Rastreio: <strong>{{ pedido.codigo_rastreio }}</strong></p>{% endif %}
+          </div>
+          <div class="text-right">
+            <p class="text-lg font-bold numeros-tabulares">{{ pedido.total_centavos|brl }}</p>
+            <p class="text-sm text-ardosia">{{ pedido.get_metodo_pagamento_display }}</p>
+          </div>
+        </div>
+        <div class="mt-3 flex flex-wrap items-end gap-3">
+          {% with voltar=request.get_full_path %}{% include "gestao/_acoes_pedido.html" %}{% endwith %}
+          <a class="btn btn-claro" href="{% url 'gestao:pedido' pedido.codigo %}">Ver detalhes</a>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+  {% include "gestao/_paginacao.html" %}
+{% else %}
+  <div class="painel-suave mt-6 px-6 py-12 text-center">
+    <svg class="icone mx-auto w-10 h-10 text-turquesa" aria-hidden="true"><use href="#i-pacote"/></svg>
+    <p class="mt-3 font-titulo text-xl">Nenhum pedido nesta etapa.</p>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends "gestao/base.html" %}
+{% load dinheiro loja %}
+
+{% block titulo %}{% if nova %}Nova peça{% else %}{{ produto.nome }}{% endif %}{% endblock %}
+
+{% block gestao %}
+<a class="text-sm font-semibold" href="{% url 'gestao:pecas' %}">← Peças</a>
+<div class="mt-2 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-4xl">{% if nova %}Nova peça{% else %}{{ produto.nome }}{% endif %}</h1>
+  {% if not nova and produto.status in "ativo esgotado" %}<a class="btn btn-claro" href="{{ produto.get_absolute_url }}">Ver na loja</a>{% endif %}
+</div>
+{% if nova %}<p class="mt-1 text-ardosia">Preencha os dados, salve e depois adicione as fotos e o estoque.</p>{% endif %}
+
+<form method="post" class="mt-6 flex flex-col gap-6" novalidate>{% csrf_token %}
+  {% if form.non_field_errors %}<p class="mensagem mensagem--error">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+  <fieldset class="painel p-5" {% if not pode_editar %}disabled{% endif %}>
+    <legend class="sr-only">Dados da peça</legend>
+    <h2 class="text-2xl">Dados da peça</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-6">
+      {% include "gestao/_campo.html" with campo=form.nome classe="sm:col-span-4" %}
+      {% include "gestao/_campo.html" with campo=form.status classe="sm:col-span-2" %}
+      {% include "gestao/_campo.html" with campo=form.categoria classe="sm:col-span-3" %}
+      {% include "gestao/_campo.html" with campo=form.material classe="sm:col-span-3" %}
+      {% include "gestao/_campo.html" with campo=form.descricao classe="sm:col-span-6" %}
+      {% include "gestao/_campo.html" with campo=form.cuidados classe="sm:col-span-6" %}
+    </div>
+  </fieldset>
+
+  <fieldset class="painel p-5" {% if not pode_editar %}disabled{% endif %}>
+    <legend class="sr-only">Preço e prazo</legend>
+    <h2 class="text-2xl">Preço e prazo</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-6">
+      {% include "gestao/_campo.html" with campo=form.preco_centavos classe="sm:col-span-2" %}
+      {% include "gestao/_campo.html" with campo=form.preco_promocional_centavos classe="sm:col-span-2" %}
+      {% include "gestao/_campo.html" with campo=form.custo_centavos classe="sm:col-span-2" %}
+      {% include "gestao/_campo.html" with campo=form.disponibilidade classe="sm:col-span-3" %}
+      {% include "gestao/_campo.html" with campo=form.prazo_producao_dias classe="sm:col-span-3" %}
+      {% include "gestao/_campo.html" with campo=form.personalizavel classe="sm:col-span-3" %}
+      {% include "gestao/_campo.html" with campo=form.destaque classe="sm:col-span-3" %}
+    </div>
+  </fieldset>
+
+  <fieldset class="painel p-5" {% if not pode_editar %}disabled{% endif %}>
+    <legend class="sr-only">Embalagem para o frete</legend>
+    <h2 class="text-2xl">Embalagem para o frete</h2>
+    <p class="mt-1 text-sm text-ardosia">Medidas da peça já embalada. São usadas para calcular o frete.</p>
+    <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {% include "gestao/_campo.html" with campo=form.peso_g %}
+      {% include "gestao/_campo.html" with campo=form.altura_cm %}
+      {% include "gestao/_campo.html" with campo=form.largura_cm %}
+      {% include "gestao/_campo.html" with campo=form.comprimento_cm %}
+    </div>
+  </fieldset>
+
+  <fieldset class="painel p-5" {% if not pode_editar %}disabled{% endif %}>
+    <legend class="sr-only">Cores e tamanhos</legend>
+    <h2 class="text-2xl">Cores e tamanhos</h2>
+    <p class="mt-1 text-sm text-ardosia">Uma linha para cada combinação vendida. Peça de um jeito só: preencha uma linha sem cor e sem tamanho. Para mais linhas, salve e uma nova linha vazia aparece.</p>
+    {{ variacoes.management_form }}
+    {% for erro in variacoes.non_form_errors %}<p class="mensagem mensagem--error mt-3">{{ erro }}</p>{% endfor %}
+    <div class="mt-4 flex flex-col gap-4">
+      {% for vform in variacoes %}
+        <div class="rounded-2xl border border-creme-3 p-4">
+          {% for oculto in vform.hidden_fields %}{{ oculto }}{% endfor %}
+          <div class="grid gap-3 sm:grid-cols-6">
+            {% include "gestao/_campo.html" with campo=vform.cor classe="sm:col-span-2" %}
+            {% include "gestao/_campo.html" with campo=vform.cor_hex classe="sm:col-span-1" %}
+            {% include "gestao/_campo.html" with campo=vform.tamanho classe="sm:col-span-1" %}
+            {% include "gestao/_campo.html" with campo=vform.preco_ajuste_centavos classe="sm:col-span-2" %}
+            {% include "gestao/_campo.html" with campo=vform.sku classe="sm:col-span-3" %}
+            {% if vform.estoque_inicial %}{% include "gestao/_campo.html" with campo=vform.estoque_inicial classe="sm:col-span-2" %}{% endif %}
+            {% include "gestao/_campo.html" with campo=vform.ativa classe="sm:col-span-1 self-end" %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <fieldset class="painel p-5" {% if not pode_editar %}disabled{% endif %}>
+    <legend class="sr-only">Ficha técnica</legend>
+    <h2 class="text-2xl">Ficha técnica</h2>
+    <p class="mt-1 text-sm text-ardosia">Aparece na página da peça. Ex.: Altura, 18 cm.</p>
+    {{ especificacoes.management_form }}
+    <div class="mt-4 flex flex-col gap-3">
+      {% for eform in especificacoes %}
+        {% for oculto in eform.hidden_fields %}{{ oculto }}{% endfor %}
+        <div class="grid grid-cols-[1fr_1fr_auto] items-end gap-3">
+          {% include "gestao/_campo.html" with campo=eform.nome %}
+          {% include "gestao/_campo.html" with campo=eform.valor %}
+          {% if eform.instance.pk %}<label class="flex items-center gap-2 pb-3 text-sm">{{ eform.DELETE }} Remover</label>{% else %}<span></span>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  {% if pode_editar %}
+    <div class="sticky bottom-0 -mx-1 flex justify-end gap-3 bg-creme/95 px-1 py-3">
+      <a class="btn btn-claro" href="{% url 'gestao:pecas' %}">Voltar</a>
+      <button type="submit" class="btn btn-primario btn-grande">Salvar peça</button>
+    </div>
+  {% endif %}
+</form>
+
+{% if not nova %}
+<section id="fotos" class="painel mt-8 p-5" aria-labelledby="titulo-fotos">
+  <h2 id="titulo-fotos" class="text-2xl">Fotos</h2>
+  <p class="mt-1 text-sm text-ardosia">A primeira foto aparece na vitrine. Fotos até 5 MB cada; se forem muitas, envie em partes.</p>
+  {% if fotos %}
+    <ul class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {% for foto in fotos %}
+        <li class="overflow-hidden rounded-2xl border border-creme-3 bg-[#fffef6]">
+          <img src="{{ foto.imagem.url }}" alt="{{ foto.texto_alternativo }}" width="300" height="300" class="aspect-square w-full object-cover" loading="lazy">
+          <div class="p-2 text-xs">
+            <p class="truncate">{% if forloop.first %}<strong>Principal</strong> · {% endif %}{{ foto.variacao.cor|default:"Todas" }}</p>
+            {% if perms.catalogo.change_produto %}
+              <div class="mt-2 flex flex-wrap gap-1">
+                {% if not forloop.first %}<form method="post" action="{% url 'gestao:foto_acao' produto.pk foto.pk 'principal' %}">{% csrf_token %}<button type="submit" class="chip">Tornar principal</button></form>{% endif %}
+                <form method="post" action="{% url 'gestao:foto_acao' produto.pk foto.pk 'apagar' %}">{% csrf_token %}<button type="submit" class="chip" aria-label="Apagar foto {{ forloop.counter }}"><svg class="icone" aria-hidden="true"><use href="#i-lixeira"/></svg>Apagar</button></form>
+              </div>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="mt-3 text-ardosia">Nenhuma foto ainda.</p>
+  {% endif %}
+  {% if perms.catalogo.change_produto %}
+    <form method="post" action="{% url 'gestao:fotos' produto.pk %}" enctype="multipart/form-data" class="mt-5 grid gap-3 border-t border-creme-3 pt-5 sm:grid-cols-6">{% csrf_token %}
+      {% include "gestao/_campo.html" with campo=fotos_form.fotos classe="sm:col-span-6" %}
+      {% include "gestao/_campo.html" with campo=fotos_form.variacao classe="sm:col-span-2" %}
+      {% include "gestao/_campo.html" with campo=fotos_form.texto_alternativo classe="sm:col-span-4" %}
+      <div class="sm:col-span-6"><button type="submit" class="btn btn-secundario"><svg class="icone" aria-hidden="true"><use href="#i-camera"/></svg>Enviar fotos</button></div>
+    </form>
+  {% endif %}
+</section>
+
+<section id="estoque" class="painel mt-8 p-5" aria-labelledby="titulo-estoque">
+  <h2 id="titulo-estoque" class="text-2xl">Estoque</h2>
+  {% if produto.disponibilidade == "sob_encomenda" %}<p class="mt-1 text-sm text-ardosia">Peça sob encomenda: o estoque só conta peças já prontas.</p>{% endif %}
+  <ul class="mt-4 divide-y divide-creme-3">
+    {% for v in estoque_variacoes %}
+      <li class="flex flex-wrap items-end justify-between gap-3 py-3">
+        <div>
+          <p class="font-semibold">{{ v.cor|default:"Única" }}{% if v.tamanho %} · {{ v.tamanho }}{% endif %}{% if not v.ativa %} <span class="text-sm font-normal text-ardosia">(inativa)</span>{% endif %}</p>
+          <p class="text-sm numeros-tabulares"><strong>{{ v.disponivel }}</strong> disponíve{{ v.disponivel|pluralize:"l,is" }}{% if v.estoque_reservado %} · {{ v.estoque_reservado }} reservada{{ v.estoque_reservado|pluralize }} em pedidos{% endif %}</p>
+        </div>
+        {% if pode_estoque %}
+          <form method="post" action="{% url 'gestao:estoque' produto.pk %}" class="flex flex-wrap items-end gap-2">{% csrf_token %}
+            <input type="hidden" name="variacao" value="{{ v.pk }}">
+            <div class="campo w-24">
+              <label for="qtd-{{ v.pk }}">Quantidade</label>
+              <input id="qtd-{{ v.pk }}" name="quantidade" type="number" step="1" required placeholder="+1">
+            </div>
+            <div class="campo w-44">
+              <label for="motivo-{{ v.pk }}">Motivo</label>
+              <input id="motivo-{{ v.pk }}" name="motivo" maxlength="200" placeholder="Ex.: terminei 2">
+            </div>
+            <button type="submit" class="btn btn-secundario">Lançar</button>
+          </form>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+  {% if pode_estoque %}<p class="mt-2 text-sm text-ardosia">Use número positivo quando terminar peças (+2) e negativo para tirar do estoque (−1), por exemplo uma peça danificada.</p>{% endif %}
+  {% if movimentacoes %}
+    <details class="mt-4">
+      <summary class="cursor-pointer text-sm font-semibold">Últimas movimentações</summary>
+      <ul class="mt-2 text-sm">
+        {% for m in movimentacoes %}<li class="py-1"><span class="numeros-tabulares font-semibold">{% if m.quantidade > 0 %}+{% endif %}{{ m.quantidade }}</span> · {{ m.variacao.cor|default:"Única" }}{% if m.variacao.tamanho %} {{ m.variacao.tamanho }}{% endif %} · {{ m.get_tipo_display }}{% if m.motivo %} ({{ m.motivo }}){% endif %} · {{ m.criado_em|date:"d/m H:i" }}</li>{% endfor %}
+      </ul>
+    </details>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

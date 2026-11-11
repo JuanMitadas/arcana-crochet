@@ -1,0 +1,87 @@
+{% extends "gestao/base.html" %}
+{% load dinheiro loja %}
+
+{% block titulo %}Pedido {{ pedido.codigo }}{% endblock %}
+
+{% block gestao %}
+<a class="text-sm font-semibold" href="{% url 'gestao:pedidos' %}">← Pedidos</a>
+<div class="mt-2 flex flex-wrap items-center gap-3">
+  <h1 class="text-4xl">Pedido {{ pedido.codigo }}</h1>
+  {% include "componentes/status_pedido.html" %}
+</div>
+<p class="mt-1 text-ardosia">Feito em {{ pedido.criado_em|date:"d/m/Y \à\s H:i" }}</p>
+
+<section class="painel mt-6 p-5" aria-labelledby="titulo-agora">
+  <h2 id="titulo-agora" class="text-2xl">Próximo passo</h2>
+  {% if pedido.status == "aguardando_pagamento" %}
+    <p class="mt-2">Confira no app do banco se caiu um Pix de <strong class="numeros-tabulares">{{ pedido.total_centavos|brl }}</strong> com o identificador <strong>{{ pedido.codigo|cut:"-" }}</strong>. Prazo: {{ pedido.pagar_ate|date:"d/m \à\s H:i" }}.</p>
+  {% elif pedido.status == "pago" %}
+    <p class="mt-2">Pagamento confirmado{% if pedido.pago_em %} em {{ pedido.pago_em|date:"d/m \à\s H:i" }}{% endif %}. Separe as peças abaixo{% if pedido.itens.all.0.sob_encomenda %} (tem peça sob encomenda){% endif %}.</p>
+  {% elif pedido.status == "em_separacao" %}
+    <p class="mt-2">Depois de postar, informe o código de rastreio para a cliente acompanhar.</p>
+  {% elif pedido.status == "enviado" %}
+    <p class="mt-2">Enviado em {{ pedido.enviado_em|date:"d/m" }} pela {{ pedido.transportadora }}, rastreio <strong>{{ pedido.codigo_rastreio }}</strong>.</p>
+  {% elif pedido.status == "entregue" %}
+    <p class="mt-2">Entregue em {{ pedido.entregue_em|date:"d/m/Y" }}. Nada a fazer.</p>
+  {% else %}
+    <p class="mt-2">Cancelado em {{ pedido.cancelado_em|date:"d/m/Y \à\s H:i" }}.</p>
+  {% endif %}
+  <div class="mt-4">{% with voltar=request.path %}{% include "gestao/_acoes_pedido.html" %}{% endwith %}</div>
+
+  {% if perms.pedidos.change_pedido and pedido.status in "aguardando_pagamento pago em_separacao" %}
+    <details class="mt-5 border-t border-creme-3 pt-4">
+      <summary class="cursor-pointer text-sm font-semibold text-alerta">Cancelar pedido</summary>
+      <form method="post" action="{% url 'gestao:acao_pedido' pedido.codigo 'cancelar' %}" class="mt-3 flex flex-wrap items-end gap-2">{% csrf_token %}
+        <div class="campo min-w-[14rem] flex-1">
+          <label for="motivo">Motivo <span class="font-normal text-ardosia">(opcional)</span></label>
+          <input id="motivo" name="motivo" maxlength="200" placeholder="Ex.: pedido duplicado">
+        </div>
+        <button type="submit" class="btn btn-claro !text-alerta">Cancelar e devolver as peças</button>
+      </form>
+      {% if pedido.status != "aguardando_pagamento" %}<p class="mt-2 text-sm text-ardosia">O pedido já foi pago: devolva o dinheiro pelo app do banco.</p>{% endif %}
+    </details>
+  {% endif %}
+</section>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+  <section class="painel p-5" aria-labelledby="titulo-itens">
+    <h2 id="titulo-itens" class="text-2xl">Peças</h2>
+    <ul class="mt-3 divide-y divide-creme-3">
+      {% for item in pedido.itens.all %}
+        {% with foto=item.produto|foto_principal %}
+        <li class="flex items-center gap-4 py-3">
+          <div class="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-nevoa">{% if foto %}<img src="{{ foto.imagem.url }}" alt="" width="64" height="64" class="h-full w-full object-cover" loading="lazy">{% endif %}</div>
+          <div class="min-w-0 flex-1">
+            <p class="font-semibold">{{ item.quantidade }}× {{ item.nome }}</p>
+            <p class="text-sm text-ardosia">{{ item.detalhes }} · SKU {{ item.sku }}{% if item.sob_encomenda %} · <strong class="text-azul">sob encomenda</strong>{% endif %}</p>
+          </div>
+          <p class="font-semibold numeros-tabulares">{{ item.preco_unitario_centavos|brl }}</p>
+        </li>
+        {% endwith %}
+      {% endfor %}
+    </ul>
+    <dl class="mt-4 grid grid-cols-[1fr_auto] gap-y-1 text-sm">
+      <dt>Subtotal</dt><dd class="text-right numeros-tabulares">{{ pedido.subtotal_centavos|brl }}</dd>
+      {% if pedido.desconto_cupom_centavos %}<dt>Cupom {{ pedido.cupom.codigo }}</dt><dd class="text-right numeros-tabulares">−{{ pedido.desconto_cupom_centavos|brl }}</dd>{% endif %}
+      {% if pedido.desconto_pix_centavos %}<dt>Desconto no Pix</dt><dd class="text-right numeros-tabulares">−{{ pedido.desconto_pix_centavos|brl }}</dd>{% endif %}
+      <dt>Frete ({{ pedido.frete_servico }})</dt><dd class="text-right numeros-tabulares">{{ pedido.frete_centavos|brl }}</dd>
+      <dt class="text-base font-bold">Total</dt><dd class="text-right text-base font-bold numeros-tabulares">{{ pedido.total_centavos|brl }}</dd>
+    </dl>
+    <p class="mt-2 text-sm text-ardosia">{{ pedido.get_metodo_pagamento_display }}{% if pedido.parcelas > 1 %} em {{ pedido.parcelas }}x{% endif %}</p>
+  </section>
+
+  <div class="flex flex-col gap-6">
+    <section class="painel p-5" aria-labelledby="titulo-entrega">
+      <h2 id="titulo-entrega" class="text-2xl">Entrega</h2>
+      <p class="mt-2 text-sm leading-relaxed"><strong>{{ pedido.endereco_entrega.destinatario }}</strong><br>{{ pedido.endereco_resumo }}</p>
+      {% if pedido.endereco_entrega.telefone %}<p class="mt-2 text-sm">{{ pedido.endereco_entrega.telefone|telefone }}</p>{% endif %}
+      <p class="mt-2 text-sm text-ardosia">{{ pedido.frete_servico }}, até {{ pedido.frete_prazo_dias }} dias úteis</p>
+    </section>
+    <section class="painel p-5" aria-labelledby="titulo-cliente">
+      <h2 id="titulo-cliente" class="text-2xl">Cliente</h2>
+      <p class="mt-2 text-sm"><strong>{{ pedido.cliente.nome_completo|default:"Sem nome" }}</strong><br><a href="mailto:{{ pedido.cliente.email }}">{{ pedido.cliente.email }}</a></p>
+      {% if pedido.observacao %}<p class="mt-3 rounded-2xl bg-creme-2 p-3 text-sm"><strong>Recado:</strong> {{ pedido.observacao }}</p>{% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

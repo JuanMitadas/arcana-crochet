@@ -29,4 +29,6 @@ addopts = "-q --strict-markers"
 filterwarnings = [
     # WhiteNoise warns when collectstatic hasn't run yet; irrelevant for tests.
     "ignore:No directory at:UserWarning",
+    # django-unfold still uses the pre-6.1 signature; harmless until it updates.
+    "ignore:Overriding get_action_choices",
 ]

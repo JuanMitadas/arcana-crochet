@@ -1,0 +1,8 @@
+{% load loja %}
+{% if pagina.paginator.num_pages > 1 %}
+  <nav class="mt-6 flex items-center justify-center gap-3" aria-label="Páginas">
+    {% if pagina.has_previous %}<a class="btn btn-claro" href="{% url_com pagina=pagina.previous_page_number %}">Anterior</a>{% endif %}
+    <span class="text-sm">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+    {% if pagina.has_next %}<a class="btn btn-claro" href="{% url_com pagina=pagina.next_page_number %}">Próxima</a>{% endif %}
+  </nav>
+{% endif %}

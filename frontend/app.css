@@ -1229,17 +1229,6 @@
     opacity: 1;
     text-decoration: underline;
   }
-  .selo-rodape {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border: 1px solid rgb(251 249 228 / 0.3);
-    border-radius: 0.75rem;
-    padding: 0.5rem 0.75rem;
-    font-size: var(--text-mini);
-    font-weight: 600;
-  }
-
   /* allauth account pages: the markup has no classes, so the container is styled */
   .conta-allauth {
     max-width: 30rem;
@@ -1316,6 +1305,38 @@
 }
 
 /* --- Custom utilities ---------------------------------------------------- */
+/* Compact header after scrolling down (static/js/loja.js toggles .topo--compacto).
+   Here rather than in components so it beats the Tailwind padding/height classes. */
+@layer utilities {
+  .topo--compacto .topo__linha {
+    padding-block: 0.5rem;
+  }
+  .topo--compacto .topo__logo {
+    height: 1.75rem;
+  }
+  .topo--compacto .menu-cat {
+    display: none;
+  }
+  /* On phones the search box is a row of its own: it gives way to a search button. */
+  @media (max-width: 47.99rem) {
+    .topo--compacto .busca {
+      display: none;
+    }
+  }
+  @media (min-width: 48rem) {
+    .topo--compacto .topo__logo {
+      height: 2.25rem;
+    }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .topo__linha,
+    .topo__logo {
+      transition:
+        padding 0.2s ease,
+        height 0.2s ease;
+    }
+  }
+}
 @utility numeros-tabulares {
   font-variant-numeric: tabular-nums;
 }

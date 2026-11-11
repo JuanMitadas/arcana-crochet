@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 
 import environ
+from django.templatetags.static import static
+from django.urls import reverse_lazy
 from django.utils.csp import CSP
 
 from .ssm import carregar_parametros
@@ -34,6 +36,8 @@ ADMIN_URL = env("ADMIN_URL", default="admin/")
 ORIGEM_SEGREDO = env("ORIGEM_SEGREDO", default="")
 
 INSTALLED_APPS = [
+    # Admin theme; must come before django.contrib.admin.
+    "unfold",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -52,12 +56,14 @@ INSTALLED_APPS = [
     "apps.catalogo",
     "apps.pedidos",
     "apps.avaliacoes",
+    "apps.gestao",
 ]
 
 MIDDLEWARE = [
     "apps.core.middleware.OrigemCloudFrontMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
+    "apps.core.middleware.CspPainelMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -312,6 +318,62 @@ if not DEBUG:
 # by the CloudFront Function; the original Host isn't forwarded to the Lambda).
 USE_X_FORWARDED_HOST = env.bool("USE_X_FORWARDED_HOST", default=False)
 
+# --- Admin (django-unfold) ----------------------------------------------------
+# The admin theme needs Alpine.js (which evaluates its own expressions) and inline
+# styles. CspPainelMiddleware applies this looser policy to ADMIN_URL only; the store
+# and the management panel (/gestao/) keep SECURE_CSP.
+SECURE_CSP_ADMIN = {
+    **SECURE_CSP,
+    "script-src": [CSP.SELF, CSP.NONCE, CSP.UNSAFE_EVAL],
+    "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
+}
+
+
+def _paleta(matiz: float, croma: list[float], luz: list[float]) -> dict[str, str]:
+    """Unfold color scale (50-950) in OKLCH from a hue and lightness/chroma steps."""
+    tons = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"]
+    return {t: f"oklch({lz}% {c} {matiz})" for t, lz, c in zip(tons, luz, croma, strict=True)}
+
+
+UNFOLD = {
+    "SITE_TITLE": "Arcana Crochet",
+    "SITE_HEADER": "Arcana Crochet",
+    "SITE_SUBHEADER": "Painel completo",
+    "SITE_URL": "/",
+    "SITE_ICON": lambda request: static("img/marca/favicon-64.png"),
+    "SITE_FAVICONS": [
+        {
+            "rel": "icon",
+            "type": "image/png",
+            "href": lambda request: static("img/marca/favicon-64.png"),
+        }
+    ],
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    "SITE_DROPDOWN": [
+        {
+            "icon": "storefront",
+            "title": "Gestão da loja",
+            "link": reverse_lazy("gestao:inicio"),
+        },
+        {"icon": "open_in_new", "title": "Ver a loja", "link": "/"},
+    ],
+    "SIDEBAR": {"show_search": True, "show_all_applications": True},
+    "COLORS": {
+        # Brand blue (#17597c is the 700 step) and a cool, slightly teal gray.
+        "primary": _paleta(
+            237,
+            [0.015, 0.03, 0.05, 0.07, 0.085, 0.09, 0.088, 0.086, 0.075, 0.062, 0.048],
+            [97.5, 94.5, 89, 81, 69, 57, 49.5, 44.1, 38, 32, 24],
+        ),
+        "base": _paleta(
+            200,
+            [0.006, 0.008, 0.012, 0.016, 0.022, 0.026, 0.03, 0.032, 0.03, 0.028, 0.024],
+            [98.4, 96.6, 92.6, 87, 70.5, 55, 44.5, 37.2, 27.8, 21, 13],
+        ),
+    },
+}
+
 # --- Store business rules ---------------------------------------------------
 
 LOJA = {
@@ -323,6 +385,8 @@ LOJA = {
     "WHATSAPP": env("LOJA_WHATSAPP", default=""),
     "EMAIL_ATENDIMENTO": env("LOJA_EMAIL_ATENDIMENTO", default="contato@arcanacrochet.com.br"),
     "INSTAGRAM": env("LOJA_INSTAGRAM", default="arcanacrochet"),
+    # Perks bar above the header (Pix discount, installments, free shipping). Off for now.
+    "FAIXA_VANTAGENS": env.bool("LOJA_FAIXA_VANTAGENS", default=False),
     # Pix straight to the store's account (apps/pedidos/pix.py). The key, name and city
     # show up in the customer's bank app; on AWS they live in SSM, not in the repo.
     "PIX_CHAVE": env("LOJA_PIX_CHAVE", default=""),

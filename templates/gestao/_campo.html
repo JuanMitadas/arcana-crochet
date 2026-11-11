@@ -1,0 +1,10 @@
+<div class="campo {{ classe }}">
+  {% if campo.widget_type == "checkbox" %}
+    <label class="flex items-center gap-2 font-medium">{{ campo }} {{ campo.label }}</label>
+  {% else %}
+    <label for="{{ campo.id_for_label }}">{{ campo.label }}{% if not campo.field.required %} <span class="font-normal text-ardosia">(opcional)</span>{% endif %}</label>
+    {{ campo }}
+  {% endif %}
+  {% if campo.help_text %}<span class="ajuda">{{ campo.help_text }}</span>{% endif %}
+  {% for erro in campo.errors %}<span class="erro">{{ erro }}</span>{% endfor %}
+</div>

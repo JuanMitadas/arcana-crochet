@@ -1,0 +1,29 @@
+{# Next step for an order. Needs: pedido, envio_form, voltar (path to return to). #}
+{% if perms.pedidos.change_pedido %}
+  {% if pedido.status == "aguardando_pagamento" %}
+    <form method="post" action="{% url 'gestao:acao_pedido' pedido.codigo 'confirmar-pix' %}">{% csrf_token %}
+      <input type="hidden" name="voltar" value="{{ voltar }}">
+      <button type="submit" class="btn btn-primario"><svg class="icone" aria-hidden="true"><use href="#i-pix"/></svg>Pix recebido: confirmar</button>
+    </form>
+  {% elif pedido.status == "pago" %}
+    <form method="post" action="{% url 'gestao:acao_pedido' pedido.codigo 'separar' %}">{% csrf_token %}
+      <input type="hidden" name="voltar" value="{{ voltar }}">
+      <button type="submit" class="btn btn-primario"><svg class="icone" aria-hidden="true"><use href="#i-pacote"/></svg>Começar a separar</button>
+    </form>
+  {% elif pedido.status == "em_separacao" %}
+    <form method="post" action="{% url 'gestao:acao_pedido' pedido.codigo 'enviar' %}" class="flex flex-wrap items-end gap-2">{% csrf_token %}
+      <input type="hidden" name="voltar" value="{{ voltar }}">
+      <div class="campo min-w-[12rem] flex-1">
+        <label for="rastreio-{{ pedido.codigo }}">Código de rastreio</label>
+        <input id="rastreio-{{ pedido.codigo }}" name="codigo_rastreio" required maxlength="40" value="{{ pedido.codigo_rastreio }}" placeholder="Ex.: AA123456789BR" autocomplete="off">
+      </div>
+      <input type="hidden" name="transportadora" value="{{ pedido.transportadora|default:'Correios' }}">
+      <button type="submit" class="btn btn-primario"><svg class="icone" aria-hidden="true"><use href="#i-caminhao"/></svg>Marcar como enviado</button>
+    </form>
+  {% elif pedido.status == "enviado" %}
+    <form method="post" action="{% url 'gestao:acao_pedido' pedido.codigo 'entregar' %}">{% csrf_token %}
+      <input type="hidden" name="voltar" value="{{ voltar }}">
+      <button type="submit" class="btn btn-secundario"><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg>Marcar como entregue</button>
+    </form>
+  {% endif %}
+{% endif %}

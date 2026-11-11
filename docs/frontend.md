@@ -84,6 +84,15 @@ Home (/)
 - A box with what happens now: Pix QR code and "copia e cola" with the payment deadline (Pix goes straight to the store's account and is approved in the admin, see [deploy.md](deploy.md#receiving-pix-payments)), production notice, **tracking code with a copy button** and tracking link, or an invitation to review.
 - Items, amounts, payment method and shipping address.
 
+### 6. Management panel (`templates/gestao/`, `/gestao/`)
+For the store team (`is_staff`), in the store's look, with the same strict CSP as the store. Each page and button also checks the Django permission behind it, so an attendant sees what the *Atendimento* group allows.
+- **Home:** counters (Pix to confirm, to prepare, to ship, on the way), the pending Pix list with the confirm button, sales of the month, low stock and reviews waiting for moderation.
+- **Orders:** tabs by step; each order shows its next action: *Pix recebido: confirmar*, *Começar a separar*, *Marcar como enviado* (with the tracking code) and *Marcar como entregue*. The detail page adds items, address, customer note and *Cancelar pedido*. Actions go through `apps/pedidos/servicos.py`, and a button from an outdated page never skips a step.
+- **Pieces:** search and status filter; the form takes prices in reais ("129,90"), colors/sizes with initial stock and an auto-generated SKU, spec sheet, photo upload (several at once, up to 5 MB each) with "make main" and delete, and stock entries/withdrawals that become stock movements.
+- **Reviews:** publish, hide and reply.
+
+The full Django admin (`ADMIN_URL`, django-unfold theme) stays for coupons, users, categories and anything else; superusers get a link to it in the panel header.
+
 ## Business rules in the interface
 
 | Rule | Where it lives |

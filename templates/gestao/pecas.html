@@ -1,0 +1,50 @@
+{% extends "gestao/base.html" %}
+{% load dinheiro loja %}
+
+{% block titulo %}Peças{% endblock %}
+
+{% block gestao %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <h1 class="text-4xl">Peças</h1>
+  {% if perms.catalogo.add_produto %}<a class="btn btn-primario" href="{% url 'gestao:peca_nova' %}"><svg class="icone" aria-hidden="true"><use href="#i-mais"/></svg>Nova peça</a>{% endif %}
+</div>
+
+<form method="get" role="search" class="mt-5 flex flex-wrap gap-2">
+  <label for="busca-peca" class="sr-only">Buscar peça</label>
+  <input id="busca-peca" type="search" name="q" value="{{ termo }}" placeholder="Nome, cor, material…" class="!rounded-full flex-1 min-w-[12rem]">
+  <label for="filtro-status" class="sr-only">Situação</label>
+  <select id="filtro-status" name="status" class="!w-auto">
+    <option value="">Todas as situações</option>
+    {% for valor, nome in status_opcoes %}<option value="{{ valor }}" {% if valor == status %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+  </select>
+  <button type="submit" class="btn btn-secundario">Filtrar</button>
+</form>
+
+{% if pagina.object_list %}
+  <ul class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    {% for produto in pagina %}
+      {% with foto=produto|foto_principal %}
+      <li class="painel relative flex gap-4 p-3">
+        <div class="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-nevoa">{% if foto %}<img src="{{ foto.imagem.url }}" alt="" width="80" height="80" class="h-full w-full object-cover" loading="lazy">{% endif %}</div>
+        <div class="min-w-0 flex-1">
+          <a class="font-bold no-underline after:absolute after:inset-0" href="{% url 'gestao:peca' produto.pk %}">{{ produto.nome }}</a>
+          <p class="text-sm text-ardosia">{{ produto.categoria.nome }}</p>
+          <p class="mt-1 text-sm"><strong class="numeros-tabulares">{{ produto.preco_atual_centavos|brl }}</strong>{% if produto.em_promocao %} <s class="text-ardosia">{{ produto.preco_centavos|brl }}</s>{% endif %}</p>
+          <p class="mt-1 flex flex-wrap items-center gap-2 text-sm">
+            <span class="etiqueta {% if produto.status == 'ativo' %}etiqueta--turquesa{% elif produto.status == 'esgotado' %}etiqueta--alerta{% else %}etiqueta--escura{% endif %}">{{ produto.get_status_display }}</span>
+            {% if produto.disponibilidade == "sob_encomenda" %}<span class="text-ardosia">Sob encomenda</span>{% else %}<span class="numeros-tabulares">{{ produto.estoque_total|default:0 }} em estoque{% if produto.reservado_total %}, {{ produto.reservado_total }} reservada{{ produto.reservado_total|pluralize }}{% endif %}</span>{% endif %}
+          </p>
+        </div>
+      </li>
+      {% endwith %}
+    {% endfor %}
+  </ul>
+  {% include "gestao/_paginacao.html" %}
+{% else %}
+  <div class="painel-suave mt-6 px-6 py-12 text-center">
+    <svg class="icone mx-auto w-10 h-10 text-turquesa" aria-hidden="true"><use href="#i-mao"/></svg>
+    <p class="mt-3 font-titulo text-xl">{% if termo or status %}Nenhuma peça encontrada.{% else %}Nenhuma peça cadastrada ainda.{% endif %}</p>
+    {% if perms.catalogo.add_produto and not termo and not status %}<a class="btn btn-primario mt-6" href="{% url 'gestao:peca_nova' %}">Cadastrar a primeira peça</a>{% endif %}
+  </div>
+{% endif %}
+{% endblock %}

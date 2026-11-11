@@ -1,0 +1,86 @@
+{% extends "gestao/base.html" %}
+{% load dinheiro loja %}
+
+{% block titulo %}Início{% endblock %}
+
+{% block gestao %}
+<h1 class="text-4xl">Olá{% if user.nome_completo %}, {{ user.nome_completo|primeiro_nome }}{% endif %}!</h1>
+<p class="mt-1 text-ardosia">O que pede atenção na loja agora.</p>
+
+{% if perms.pedidos.view_pedido %}
+<ul class="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+  <li><a class="painel block p-4 no-underline hover:border-azul {% if contagem.pagar %}border-azul{% endif %}" href="{% url 'gestao:pedidos' %}?etapa=pagar">
+    <span class="block font-titulo text-4xl numeros-tabulares {% if contagem.pagar %}text-azul{% endif %}">{{ contagem.pagar }}</span>
+    <span class="text-sm font-semibold">Pix para confirmar</span></a></li>
+  <li><a class="painel block p-4 no-underline hover:border-azul" href="{% url 'gestao:pedidos' %}?etapa=separar">
+    <span class="block font-titulo text-4xl numeros-tabulares">{{ contagem.separar }}</span>
+    <span class="text-sm font-semibold">Para separar</span></a></li>
+  <li><a class="painel block p-4 no-underline hover:border-azul" href="{% url 'gestao:pedidos' %}?etapa=enviar">
+    <span class="block font-titulo text-4xl numeros-tabulares">{{ contagem.enviar }}</span>
+    <span class="text-sm font-semibold">Para enviar</span></a></li>
+  <li><a class="painel block p-4 no-underline hover:border-azul" href="{% url 'gestao:pedidos' %}?etapa=caminho">
+    <span class="block font-titulo text-4xl numeros-tabulares">{{ contagem.caminho }}</span>
+    <span class="text-sm font-semibold">A caminho</span></a></li>
+</ul>
+
+<section class="painel mt-6 p-5" aria-labelledby="titulo-pix">
+  <div class="flex flex-wrap items-baseline justify-between gap-2">
+    <h2 id="titulo-pix" class="text-2xl">Pix para confirmar</h2>
+    <a class="text-sm font-semibold" href="{% url 'gestao:pedidos' %}?etapa=pagar">Ver todos</a>
+  </div>
+  {% if pix_pendentes %}
+    <p class="mt-1 text-sm text-ardosia">Confira no app do banco se o valor caiu (o identificador é o código do pedido) e confirme aqui.</p>
+    <ul class="mt-4 divide-y divide-creme-3">
+      {% for pedido in pix_pendentes %}
+        <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+          <div>
+            <a class="font-bold" href="{% url 'gestao:pedido' pedido.codigo %}">{{ pedido.codigo }}</a>
+            <span class="text-sm text-ardosia">· {{ pedido.cliente.nome_completo|default:pedido.cliente.email }}</span>
+            <p class="text-sm">Vence {{ pedido.pagar_ate|date:"d/m \à\s H:i" }}</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="font-bold numeros-tabulares">{{ pedido.total_centavos|brl }}</span>
+            {% with voltar=request.get_full_path %}{% include "gestao/_acoes_pedido.html" %}{% endwith %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="mt-3 text-ardosia">Nenhum Pix esperando confirmação.</p>
+  {% endif %}
+</section>
+
+<p class="mt-6 text-sm text-ardosia">Vendas desde {{ inicio_mes|date:"j \d\e F" }}: <strong class="text-petroleo numeros-tabulares">{{ resumo_mes.total|default:0|brl }}</strong> em {{ resumo_mes.pedidos }} pedido{{ resumo_mes.pedidos|pluralize }}.</p>
+{% endif %}
+
+<div class="mt-6 grid gap-6 md:grid-cols-2">
+  {% if perms.catalogo.view_produto %}
+  <section class="painel p-5" aria-labelledby="titulo-estoque">
+    <h2 id="titulo-estoque" class="text-2xl">Estoque acabando</h2>
+    {% if estoque_baixo %}
+      <ul class="mt-3 divide-y divide-creme-3">
+        {% for v in estoque_baixo %}
+          <li class="flex items-center justify-between gap-3 py-2">
+            <a href="{% url 'gestao:peca' v.produto_id %}#estoque">{{ v }}</a>
+            <span class="etiqueta {% if v.livre <= 0 %}etiqueta--alerta{% else %}etiqueta--turquesa{% endif %}">{% if v.livre <= 0 %}Esgotado{% else %}Última{% endif %}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="mt-3 text-ardosia">Todas as peças de pronta entrega têm estoque.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+  {% if perms.avaliacoes.view_avaliacao %}
+  <section class="painel p-5" aria-labelledby="titulo-avaliacoes">
+    <h2 id="titulo-avaliacoes" class="text-2xl">Avaliações</h2>
+    {% if avaliacoes_pendentes %}
+      <p class="mt-3"><strong>{{ avaliacoes_pendentes }}</strong> avaliaç{{ avaliacoes_pendentes|pluralize:"ão,ões" }} esperando você aprovar.</p>
+      <a class="btn btn-secundario mt-4" href="{% url 'gestao:avaliacoes' %}">Moderar avaliações</a>
+    {% else %}
+      <p class="mt-3 text-ardosia">Nenhuma avaliação esperando moderação.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

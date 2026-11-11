@@ -1,6 +1,7 @@
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from unfold.admin import ModelAdmin, TabularInline
 
 from apps.core.templatetags.dinheiro import brl
 
@@ -8,7 +9,7 @@ from . import servicos
 from .models import Cupom, Pedido, PedidoItem
 
 
-class ItemInline(admin.TabularInline):
+class ItemInline(TabularInline):
     model = PedidoItem
     extra = 0
     can_delete = False
@@ -24,7 +25,7 @@ class ItemInline(admin.TabularInline):
 
 
 @admin.register(Pedido)
-class PedidoAdmin(admin.ModelAdmin):
+class PedidoAdmin(ModelAdmin):
     list_display = [
         "codigo", "cliente", "status", "total", "metodo_pagamento", "pagar_ate", "criado_em"
     ]  # fmt: skip
@@ -115,7 +116,7 @@ class PedidoAdmin(admin.ModelAdmin):
 
 
 @admin.register(Cupom)
-class CupomAdmin(admin.ModelAdmin):
+class CupomAdmin(ModelAdmin):
     list_display = ["codigo", "tipo", "valor", "minimo_centavos", "usos", "limite_usos", "ativo"]
     list_filter = ["tipo", "ativo"]
     search_fields = ["codigo"]
