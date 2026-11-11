@@ -53,6 +53,12 @@ def test_healthz_so_consulta_o_banco_quando_pedido(client, django_assert_num_que
         assert client.get("/healthz/").status_code == 200
     with django_assert_num_queries(1):
         assert client.get("/healthz/?banco=1").status_code == 200
+    # The warm-up ping keeps the database connection open with one SELECT 1.
+    with django_assert_num_queries(1):
+        resposta = client.post(
+            "/healthz/", data='{"aquecimento": true}', content_type="application/json"
+        )
+        assert resposta.json() == {"status": "ok"}
 
 
 @pytest.mark.django_db

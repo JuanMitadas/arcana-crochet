@@ -120,8 +120,9 @@ if DSQL_ENDPOINT:
             # skips ahead 65536 ids, and Django's integer foreign keys would overflow.
             "USE_SEQUENCE_AUTOFIELDS": True,
             "SEQUENCE_CACHE_SIZE": 1,
-            # DSQL closes connections after one hour.
-            "CONN_MAX_AGE": env.int("DB_CONN_MAX_AGE", default=300),
+            # Kept open between requests (the warm-up ping uses it every 5 minutes);
+            # DSQL closes connections after one hour anyway.
+            "CONN_MAX_AGE": env.int("DB_CONN_MAX_AGE", default=900),
             "CONN_HEALTH_CHECKS": True,
         }
     }

@@ -60,7 +60,7 @@ python manage.py runserver
 | Check style | `ruff check .` and `ruff format .` |
 | Create migrations | `python manage.py makemigrations` |
 | Apply migrations | `python manage.py migrate` |
-| Demo data | `python manage.py popular_demo` (customer: `cliente@arcana.test` / `arcana-demo-123`) |
+| Demo data | `python manage.py popular_demo` (customer: `cliente@arcana.test` / `arcana-demo-123`), or `--pecas 3` for just a few pieces |
 | CSS (Tailwind) | `npm install` once, then `npm run watch:css` or `npm run build:css` |
 | Check migrations against Aurora DSQL | `python manage.py ensaio_dsql \| dsql-lint -` (setup in [docs/deploy.md](docs/deploy.md#7-database-changes); CI runs it on every push) |
 

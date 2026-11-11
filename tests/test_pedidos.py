@@ -258,3 +258,29 @@ def test_popular_demo_cria_loja_navegavel(client, settings, tmp_path):
     assert Avaliacao.objects.filter(status="publicada").exists()
     for url in ["/", "/loja/", "/c/amigurumis/", "/p/urso-ursolino/", "/busca/?q=urso"]:
         assert client.get(url).status_code == 200, url
+
+
+@pytest.mark.django_db
+def test_popular_demo_so_algumas_pecas(client, settings, tmp_path):
+    from django.core.management import call_command
+
+    from apps.catalogo.models import Categoria
+    from apps.contas.models import Usuario
+
+    settings.DEBUG = True
+    settings.MEDIA_ROOT = tmp_path
+    call_command("popular_demo", pecas=3)
+    produtos = list(Produto.objects.select_related("categoria__pai"))
+    assert len(produtos) == 3
+    # One piece from each of three top-level categories, and only their categories.
+    assert len({p.categoria.pai_id or p.categoria_id for p in produtos}) == 3
+    assert set(Categoria.objects.values_list("slug", flat=True)) == {
+        "amigurumis", "bichinhos", "bolsas", "casa",
+    }  # fmt: skip
+    assert not Pedido.objects.exists() and not Usuario.objects.exists()
+    assert client.get("/loja/").status_code == 200
+    # Running it again doesn't duplicate, and --limpar removes the pieces.
+    call_command("popular_demo", pecas=3)
+    assert Produto.objects.count() == 3
+    call_command("popular_demo", limpar=True, pecas=1)
+    assert Produto.objects.count() == 1
