@@ -20,6 +20,7 @@
       </div>
       <button type="submit" class="btn btn-primario btn-bloco">Entrar e continuar</button>
     </form>
+    <div class="mt-3">{% include "componentes/entrar_google.html" with proximo=proximo %}</div>
     <div class="mt-5 flex flex-col gap-2 border-t border-creme-3 pt-5 text-sm">
       <a class="link inline-flex items-center gap-2" href="{% url 'account_request_login_code' %}?next={{ proximo|urlencode }}"><svg class="icone w-4 h-4" aria-hidden="true"><use href="#i-email"/></svg>Entrar com um código por e-mail, sem senha</a>
       <a class="link" href="{% url 'account_reset_password' %}">Esqueci minha senha</a>

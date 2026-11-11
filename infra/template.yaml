@@ -180,8 +180,9 @@ Resources:
       Description: Arcana Crochet store (Django + Lambda Web Adapter)
       PackageType: Image
       Architectures: [x86_64]
-      # More memory also means more CPU, which shortens Django's cold start.
-      MemorySize: 1024
+      # Memory also sets the CPU: 2 GB gives a full vCPU, which roughly halves the
+      # ~2 s it takes to load Django on a cold start. Still within the free tier.
+      MemorySize: 2048
       Timeout: 30
       LoggingConfig:
         LogGroup: !Ref SiteLogs

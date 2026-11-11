@@ -36,4 +36,8 @@ EXPOSE 8000
 ENTRYPOINT ["/app/docker/entrypoint.sh"]
 # One worker per instance: Lambda delivers one request at a time. On another server,
 # set WEB_CONCURRENCY for more workers. No control socket (read-only disk).
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--timeout", "29", "--no-control-socket", "--access-logfile", "-"]
+# --timeout 0: Lambda freezes the instance between requests, and gunicorn's worker
+# timeout counted that frozen time, killed the worker on the next request and started
+# a new one, which loads Django again (~3 s). Lambda's own 30 s timeout still applies.
+# --preload: Django loads once in the master, so a replacement worker starts at once.
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--timeout", "0", "--preload", "--no-control-socket", "--access-logfile", "-"]

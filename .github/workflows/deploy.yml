@@ -80,6 +80,8 @@ jobs:
           DEBUG: "0"
           SECRET_KEY: only-for-collectstatic-${{ github.run_id }}
           ALLOWED_HOSTS: localhost
+          # Settings need a database URL to load; collectstatic never connects to it.
+          DATABASE_URL: sqlite:////tmp/collectstatic.sqlite3
         run: python manage.py collectstatic --noinput -v 0
 
       - name: Upload static files
