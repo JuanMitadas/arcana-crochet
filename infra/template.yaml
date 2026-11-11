@@ -5,7 +5,7 @@ Description: >-
   database on Aurora DSQL, secrets in SSM Parameter Store, daily backups in AWS Backup.
 
   visitor → CloudFront ─┬─ /media/*  → S3 (photos)
-                        ├─ /static/* → Lambda (long cache)
+                        ├─ /static/* → S3 (CSS, JS, fonts; uploaded by the deploy)
                         └─ rest      → Lambda (no cache) → Aurora DSQL
 
 Parameters:
@@ -50,7 +50,10 @@ Rules:
         AssertDescription: With a custom domain, set CertificadoArn (ACM in us-east-1).
 
 Resources:
-  # --- Photos -----------------------------------------------------------------
+  # --- Photos and static files ---------------------------------------------------
+  # One bucket: photos under media/ (uploaded from the admin) and CSS/JS/fonts under
+  # static/ (uploaded by .github/workflows/deploy.yml). Serving static files from S3
+  # keeps a cold Lambda from being started just to deliver a stylesheet.
 
   Midia:
     Type: AWS::S3::Bucket
@@ -89,7 +92,9 @@ Resources:
             Principal:
               Service: cloudfront.amazonaws.com
             Action: s3:GetObject
-            Resource: !Sub ${Midia.Arn}/media/*
+            Resource:
+              - !Sub ${Midia.Arn}/media/*
+              - !Sub ${Midia.Arn}/static/*
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribuicao}
@@ -212,8 +217,8 @@ Resources:
               Action: dsql:DbConnectAdmin
               Resource: !If [UsaBancoRestaurado, !Sub "arn:${AWS::Partition}:dsql:${AWS::Region}:${AWS::AccountId}:cluster/${BancoRestaurado}", !GetAtt Banco.ResourceArn]
       Events:
-        # Keeps one instance warm: the Lambda Web Adapter forwards this event to
-        # /healthz/ (AWS_LWA_PASS_THROUGH_PATH), which answers without the database.
+        # Keeps one instance warm, with its database connection open: the Lambda Web
+        # Adapter forwards this event to /healthz/ (AWS_LWA_PASS_THROUGH_PATH).
         Aquecimento:
           Type: ScheduleV2
           Properties:
@@ -326,9 +331,9 @@ Resources:
             - EventType: viewer-request
               FunctionARN: !GetAtt FuncaoBorda.FunctionMetadata.FunctionARN
         CacheBehaviors:
-          # Files with a hash in their name (collectstatic + WhiteNoise): long cache.
+          # Files with a hash in their name, uploaded to S3 by the deploy: long cache.
           - PathPattern: /static/*
-            TargetOriginId: lambda
+            TargetOriginId: midia
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods: [GET, HEAD]
             CachedMethods: [GET, HEAD]

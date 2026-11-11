@@ -50,22 +50,43 @@ jobs:
       - name: Build the Lambda image
         run: sam build --template-file infra/template.yaml
 
-      # Migrations run before the new code goes live. On the very first deploy the
-      # database doesn't exist yet, so they run right after the stack is created.
-      - name: Find the database
+      # Migrations and static files go out before the new code goes live. On the very
+      # first deploy the database and the bucket don't exist yet, so both happen right
+      # after the stack is created.
+      - name: Find the database and the bucket
         id: banco
         env:
           BANCO_RESTAURADO: ${{ vars.BANCO_RESTAURADO }}
         run: |
+          saida() {
+            aws cloudformation describe-stacks --stack-name "$STACK" \
+              --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" \
+              --output text 2>/dev/null || true
+          }
           if [ -n "$BANCO_RESTAURADO" ]; then
             endpoint="$BANCO_RESTAURADO.dsql.$AWS_REGION.on.aws"
           else
-            endpoint=$(aws cloudformation describe-stacks --stack-name "$STACK" \
-              --query "Stacks[0].Outputs[?OutputKey=='BancoEndpoint'].OutputValue" \
-              --output text 2>/dev/null || true)
+            endpoint=$(saida BancoEndpoint)
           fi
+          bucket=$(saida BucketMidia)
           if [ "$endpoint" = "None" ]; then endpoint=""; fi
+          if [ "$bucket" = "None" ]; then bucket=""; fi
           echo "endpoint=$endpoint" >> "$GITHUB_OUTPUT"
+          echo "bucket=$bucket" >> "$GITHUB_OUTPUT"
+
+      # The same files baked into the image (same code, same hashes), served from S3.
+      - name: Build static files
+        env:
+          DEBUG: "0"
+          SECRET_KEY: only-for-collectstatic-${{ github.run_id }}
+          ALLOWED_HOSTS: localhost
+        run: python manage.py collectstatic --noinput -v 0
+
+      - name: Upload static files
+        if: steps.banco.outputs.bucket != ''
+        env:
+          BUCKET: ${{ steps.banco.outputs.bucket }}
+        run: bash infra/enviar-estaticos.sh "$BUCKET"
 
       - name: Apply migrations (Aurora DSQL)
         if: steps.banco.outputs.endpoint != ''
@@ -108,6 +129,13 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='BancoEndpoint'].OutputValue" --output text)
           export DSQL_ENDPOINT
           python manage.py migrate --noinput
+
+      - name: Upload static files (first deploy)
+        if: steps.banco.outputs.bucket == ''
+        run: |
+          bucket=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query "Stacks[0].Outputs[?OutputKey=='BucketMidia'].OutputValue" --output text)
+          bash infra/enviar-estaticos.sh "$bucket"
 
       - name: Summary
         run: |

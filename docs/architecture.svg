@@ -57,7 +57,7 @@
 <rect x="508" y="388" width="64" height="64" fill="url(#g11)"/>
 <g class="glifo" transform="translate(508 388)"><ellipse cx="32" cy="19" rx="17" ry="6"/><path d="M15 19l4 27c1 4 6 6 13 6s12-2 13-6l4-27"/></g>
 <text class="rotulo" x="540" y="472" text-anchor="middle">Amazon S3</text>
-<text class="rotulo" x="540" y="487" text-anchor="middle">(photos)</text>
+<text class="rotulo" x="540" y="487" text-anchor="middle">(photos, CSS, JS)</text>
 <defs><linearGradient id="g12" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#B0084D"/><stop offset="1" stop-color="#FF4F8B"/></linearGradient></defs>
 <rect x="828" y="388" width="64" height="64" fill="url(#g12)"/>
 <g class="glifo" transform="translate(828 388)"><circle cx="23" cy="32" r="9"/><path d="M32 32h20M45 32v8M51 32v6"/></g>
@@ -97,7 +97,7 @@
 <path class="seta" d="M700 198 V234" marker-end="url(#ponta)"/>
 <text class="nota" x="708" y="220" text-anchor="start">every 5 min</text>
 <path class="seta" d="M422 290 H460 V420 H504" marker-end="url(#ponta)"/>
-<text class="nota" x="466" y="380" text-anchor="start">/media/*</text>
+<text class="nota" x="466" y="380" text-anchor="start">/media, /static</text>
 <path class="seta" d="M732 290 H780 V420 H824" marker-end="url(#ponta)"/>
 <path class="seta" d="M780 420 V560 H824" marker-end="url(#ponta)"/>
 <path class="seta" d="M732 250 H780 V120 H1074" marker-end="url(#ponta)"/>

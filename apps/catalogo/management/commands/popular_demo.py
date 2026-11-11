@@ -2,10 +2,12 @@
 
     python manage.py popular_demo            # creates it if it doesn't exist yet
     python manage.py popular_demo --limpar   # deletes the demo data and recreates it
+    python manage.py popular_demo --pecas 3  # only 3 pieces, no customers or orders
 
 Creates categories, pieces with generated illustrations, stock, coupons, a test
 customer (cliente@arcana.test / arcana-demo-123) with orders at several stages, and
-published reviews.
+published reviews. With --pecas, only that many pieces (from different categories)
+and their categories: handy to show the published store without fake orders.
 """
 
 import random
@@ -113,26 +115,54 @@ AVALIACOES = [
 SENHA_DEMO = "arcana-demo-123"
 
 
+def sortear_variadas(quantidade: int) -> list:
+    """The first ``quantidade`` pieces, taking one from each top-level category in turn."""
+    pais = {slug: pai or slug for slug, _, _, pai in CATEGORIAS}
+    grupos: dict[str, list] = {}
+    for linha in PRODUTOS:
+        grupos.setdefault(pais[linha[2]], []).append(linha)
+    escolhidas = []
+    while len(escolhidas) < min(quantidade, len(PRODUTOS)):
+        for grupo in grupos.values():
+            if grupo and len(escolhidas) < quantidade:
+                escolhidas.append(grupo.pop(0))
+    return escolhidas
+
+
 class Command(BaseCommand):
     help = "Fill the store with demo pieces, orders and reviews."
 
     def add_arguments(self, parser):
         parser.add_argument("--limpar", action="store_true", help="Delete the demo data first.")
+        parser.add_argument(
+            "--pecas",
+            type=int,
+            metavar="N",
+            help="Only N pieces from different categories, without customers or orders.",
+        )
 
-    def handle(self, *args, limpar=False, **options):
+    def handle(self, *args, limpar=False, pecas=None, **options):
         if not settings.DEBUG:
             raise CommandError("Development only (DEBUG=1).")
         if limpar:
             self._limpar()
-        if Produto.objects.filter(slug="urso-ursolino").exists():
+        if pecas is not None and pecas < 1:
+            raise CommandError("--pecas must be at least 1.")
+        linhas = sortear_variadas(pecas) if pecas else PRODUTOS
+        if Produto.objects.filter(slug__in=[linha[0] for linha in linhas]).exists():
             self.stdout.write("The demo data already exists. Use --limpar to recreate it.")
             return
         random.seed(7)
         with transaction.atomic():
-            categorias = self._categorias()
-            produtos = self._produtos(categorias)
-            self._cupons()
-            self._pedidos_e_avaliacoes(produtos)
+            categorias = self._categorias({linha[2] for linha in linhas})
+            produtos = self._produtos(categorias, linhas)
+            if not pecas:
+                self._cupons()
+                self._pedidos_e_avaliacoes(produtos)
+        if pecas:
+            plural = "s" if len(produtos) > 1 else ""
+            self.stdout.write(self.style.SUCCESS(f"Done: {len(produtos)} demo piece{plural}."))
+            return
         self.stdout.write(
             self.style.SUCCESS(
                 f"Done: {len(produtos)} pieces. Test customer: cliente@arcana.test / {SENHA_DEMO}"
@@ -162,7 +192,9 @@ class Command(BaseCommand):
         demo.delete()
         self.stdout.write("Demo data deleted.")
 
-    def _categorias(self):
+    def _categorias(self, usadas):
+        pais = {slug: pai for slug, _, _, pai in CATEGORIAS}
+        necessarias = usadas | {pais[slug] for slug in usadas if pais[slug]}
         categorias = {}
         imagens = {
             "amigurumis": ("urso", "#17597c"),
@@ -171,6 +203,8 @@ class Command(BaseCommand):
             "acessorios": ("gorro", "#015d5c"),
         }
         for ordem, (slug, nome, descricao, pai) in enumerate(CATEGORIAS):
+            if slug not in necessarias:
+                continue
             cat = Categoria.objects.create(
                 slug=slug, nome=nome, descricao=descricao, pai=categorias.get(pai), ordem=ordem
             )
@@ -182,10 +216,10 @@ class Command(BaseCommand):
             categorias[slug] = cat
         return categorias
 
-    def _produtos(self, categorias):
+    def _produtos(self, categorias, linhas):
         agora = timezone.now()
         produtos = []
-        for i, linha in enumerate(PRODUTOS):
+        for i, linha in enumerate(linhas):
             (slug, nome, cat, forma, preco, promo, disp, prazo, cores, tamanhos, material,
              destaque, estoque) = linha  # fmt: skip
             produto = Produto.objects.create(

@@ -4,7 +4,7 @@ The store runs on a **Lambda** function in São Paulo, behind **CloudFront**. Ph
 
 ```
 visitor → CloudFront ─┬─ /media/*  → S3 (photos)
-                      ├─ /static/* → Lambda (cached for a year at the edge)
+                      ├─ /static/* → S3 (CSS, JS, fonts; uploaded by the deploy)
                       └─ rest      → Lambda (Django) → Aurora DSQL
 ```
 
@@ -79,9 +79,10 @@ In the repository: **Settings → Environments → New environment** → `produc
 Open a pull request from `dev` to `main` and merge it. The **Deploy to AWS** workflow runs by itself and:
 
 1. builds the Lambda image (Dockerfile with the Lambda Web Adapter);
-2. publishes with AWS SAM, which on the first run also creates the Aurora DSQL cluster;
-3. applies the migrations on Aurora DSQL (on later deploys this happens *before* publishing, so the new code never runs against an old schema);
-4. checks `/healthz/?banco=1`.
+2. uploads the static files (CSS, JS, fonts) to S3;
+3. publishes with AWS SAM, which on the first run also creates the Aurora DSQL cluster and the bucket;
+4. applies the migrations on Aurora DSQL (on later deploys this and the static upload happen *before* publishing, so the new code never runs against an old schema or missing files);
+5. checks `/healthz/?banco=1`.
 
 The first deploy takes about 10 minutes, because CloudFront takes a while to spread to the edge locations. The store address shows up in the workflow summary (`https://dxxxx.cloudfront.net`). You can also run it by hand in **Actions → Deploy to AWS → Run workflow**.
 
@@ -108,6 +109,8 @@ DEBUG=1 DSQL_ENDPOINT='<BancoEndpoint>' AWS_PROFILE='<your SSO profile>' SECRET_
 ```
 
 `DEBUG=1` only applies to that command on your computer; the site stays in production mode. Before selling for real, run the same command with `--limpar` to delete the test customer and the demo pieces.
+
+To show the published store with just a few pieces and no fake customers or orders, add `--pecas 3` (any number): it creates that many pieces from different categories, and only those categories.
 
 ## 6. Custom domain (optional)
 
@@ -173,7 +176,7 @@ After upgrading Django or django-allauth, run `python -m pytest tests/test_dsql.
 
 ## 10. Limits of this architecture
 
-- **Slower first visit.** After a while idle, the first request pays the Lambda cold start (1 to 3 s). An EventBridge schedule calls the Lambda every 5 minutes to keep it warm, for free and without touching the database. Aurora DSQL itself has no cold start.
+- **Slower first visit.** After a while idle, the first request may pay the Lambda cold start (1 to 3 s). An EventBridge schedule calls the Lambda every 5 minutes to keep one instance warm with its database connection open, and CSS, JS and fonts come from S3, so they never start a Lambda. Aurora DSQL itself has no cold start.
 - **Uploads up to 6 MB per request** (Lambda function URL limit). Resize photos before uploading them in the admin. Product videos bigger than that will need direct upload to S3, planned for a later phase.
 - **Aurora DSQL free tier:** 100,000 DPUs and 1 GB of storage a month. Above that it's billed per use, with no instance to resize.
 - **The Lambda connects as the database `admin`.** Fine for a single store; a dedicated database role with fewer permissions is a later improvement.

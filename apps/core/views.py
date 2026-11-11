@@ -16,9 +16,12 @@ def healthz(request):
     Accepts POST because the Lambda Web Adapter delivers non-HTTP events here, such
     as the EventBridge warm-up ping (AWS_LWA_PASS_THROUGH_PATH).
 
-    By default it doesn't query the database: the warm-up ping runs every 5 minutes
-    and would spend Aurora DSQL usage for nothing. Use ?banco=1 in the uptime
-    monitor to check the database too.
+    A plain GET doesn't touch the database (the adapter's readiness check uses it);
+    ?banco=1 in the uptime monitor checks the database too. The warm-up ping
+    (``{"aquecimento": true}``, every 5 minutes) runs ``SELECT 1`` so the instance
+    keeps its database connection open: otherwise the first visitor after a quiet
+    spell pays for a new TLS connection and IAM token. It costs a tiny amount of
+    Aurora DSQL usage, well within the free tier.
 
     The hourly EventBridge event ``{"tarefa": "cancelar_pedidos_vencidos"}`` cancels
     unpaid orders past the deadline. Anyone reaching this URL could send it too, which
@@ -28,7 +31,7 @@ def healthz(request):
         from apps.pedidos.servicos import cancelar_vencidos
 
         return JsonResponse({"status": "ok", "cancelados": cancelar_vencidos()})
-    if request.GET.get("banco") == "1":
+    if request.GET.get("banco") == "1" or (request.method == "POST" and _aquecimento(request)):
         try:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT 1")
@@ -43,3 +46,11 @@ def _tarefa(request) -> str:
     except ValueError:
         return ""
     return corpo.get("tarefa", "") if isinstance(corpo, dict) else ""
+
+
+def _aquecimento(request) -> bool:
+    try:
+        corpo = json.loads(request.body or b"{}")
+    except ValueError:
+        return False
+    return isinstance(corpo, dict) and corpo.get("aquecimento") is True
