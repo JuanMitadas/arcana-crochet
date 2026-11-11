@@ -75,6 +75,12 @@
       </form>
 
       <nav class="flex items-center gap-1 justify-self-end" aria-label="Sua conta">
+        {% if user.is_staff %}
+          <a class="acao-topo" href="{% url 'gestao:inicio' %}" aria-label="Gestão da loja">
+            <svg class="icone w-6 h-6" aria-hidden="true"><use href="#i-agulha"/></svg>
+            <span class="hidden lg:inline">Gestão</span>
+          </a>
+        {% endif %}
         {% if user.is_authenticated %}
           <a class="acao-topo" href="{% url 'pedidos:lista' %}">
             <svg class="icone w-6 h-6" aria-hidden="true"><use href="#i-usuario"/></svg>

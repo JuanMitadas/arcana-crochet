@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block head_title %}{% block titulo %}Gestão{% endblock %} | Arcana Crochet{% endblock %}
+
+{% block cabecalho %}
+<header class="topo">
+  <div class="container-loja flex flex-wrap items-center justify-between gap-3 py-3">
+    <a href="{% url 'gestao:inicio' %}" class="flex items-center gap-3 no-underline" aria-label="Gestão da loja, início">
+      <img src="{% static 'img/marca/nome-azul.png' %}" alt="Arcana Crochet" width="150" height="44" class="h-9 w-auto">
+      <span class="etiqueta etiqueta--escura">Gestão</span>
+    </a>
+    <nav class="flex items-center gap-1 text-sm" aria-label="Atalhos">
+      <a class="acao-topo" href="{% url 'catalogo:home' %}"><svg class="icone" aria-hidden="true"><use href="#i-casa"/></svg><span class="hidden sm:inline">Ver a loja</span></a>
+      {% if user.is_superuser %}<a class="acao-topo" href="{% url 'admin:index' %}"><svg class="icone" aria-hidden="true"><use href="#i-agulha"/></svg><span class="hidden sm:inline">Painel completo</span></a>{% endif %}
+      <form method="post" action="{% url 'account_logout' %}">{% csrf_token %}
+        <button type="submit" class="acao-topo cursor-pointer"><svg class="icone" aria-hidden="true"><use href="#i-sair"/></svg><span class="hidden sm:inline">Sair</span></button>
+      </form>
+    </nav>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container-loja pt-6 pb-16">
+  <div class="grid gap-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10">
+    <nav aria-label="Gestão da loja" class="min-w-0 self-start lg:sticky lg:top-6">
+      <ul class="sem-barra flex gap-1 overflow-x-auto lg:flex-col">
+        <li><a class="acao-topo whitespace-nowrap {% if secao == 'inicio' %}bg-creme-2 text-azul{% endif %}" href="{% url 'gestao:inicio' %}" {% if secao == 'inicio' %}aria-current="page"{% endif %}><svg class="icone" aria-hidden="true"><use href="#i-casa"/></svg>Início</a></li>
+        {% if perms.pedidos.view_pedido %}<li><a class="acao-topo whitespace-nowrap {% if secao == 'pedidos' %}bg-creme-2 text-azul{% endif %}" href="{% url 'gestao:pedidos' %}" {% if secao == 'pedidos' %}aria-current="page"{% endif %}><svg class="icone" aria-hidden="true"><use href="#i-pacote"/></svg>Pedidos</a></li>{% endif %}
+        {% if perms.catalogo.view_produto %}<li><a class="acao-topo whitespace-nowrap {% if secao == 'pecas' %}bg-creme-2 text-azul{% endif %}" href="{% url 'gestao:pecas' %}" {% if secao == 'pecas' %}aria-current="page"{% endif %}><svg class="icone" aria-hidden="true"><use href="#i-mao"/></svg>Peças</a></li>{% endif %}
+        {% if perms.avaliacoes.view_avaliacao %}<li><a class="acao-topo whitespace-nowrap {% if secao == 'avaliacoes' %}bg-creme-2 text-azul{% endif %}" href="{% url 'gestao:avaliacoes' %}" {% if secao == 'avaliacoes' %}aria-current="page"{% endif %}><svg class="icone" aria-hidden="true"><use href="#i-estrela"/></svg>Avaliações</a></li>{% endif %}
+      </ul>
+    </nav>
+    <div class="min-w-0">{% block gestao %}{% endblock %}</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block rodape %}{% endblock %}

@@ -27,3 +27,21 @@ class OrigemCloudFrontMiddleware:
             if not hmac.compare_digest(recebido, self.segredo):
                 return HttpResponseForbidden("Acesso direto não permitido.")
         return self.get_response(request)
+
+
+class CspPainelMiddleware:
+    """Looser Content-Security-Policy for the admin only (settings.SECURE_CSP_ADMIN).
+
+    Listed right after Django's CSP middleware, so it sees the response first and
+    leaves the policy choice on it, the same way the ``csp_override`` decorator does.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.prefixo = "/" + settings.ADMIN_URL.lstrip("/")
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if request.path.startswith(self.prefixo):
+            response._csp_config = settings.SECURE_CSP_ADMIN
+        return response

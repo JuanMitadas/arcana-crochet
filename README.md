@@ -76,6 +76,7 @@ apps/contas/       users with email login, customer/attendant/admin roles, addre
 apps/catalogo/     categories, products, variations, photos, spec sheet, stock, search and filters
 apps/pedidos/      bag, shipping, coupons, checkout, orders and tracking
 apps/avaliacoes/   reviews from customers who received the piece, with moderation
+apps/gestao/       management panel for the store team (/gestao/): orders, pieces, stock, photos, reviews
 templates/         store pages (home, listing, product, bag, checkout, my account)
 static/            compiled CSS, store JS, fonts and brand images
 docker/            Dockerfile (the same for development and Lambda) and entrypoint
@@ -94,6 +95,7 @@ Python identifiers, models and URLs keep their Portuguese names (`Produto`, `Ped
 - **Transactions that write orders or stock use `@atomico`** (`apps/core/transacoes.py`), which retries Aurora DSQL's optimistic concurrency conflicts.
 - **Migrations must be additive** (nullable new fields, no column type changes): Aurora DSQL can't alter or drop columns. See [docs/deploy.md](docs/deploy.md#7-database-changes).
 - **Store team:** create the user in the admin with the *Atendente* role and add it to the *Atendimento* group. MFA lives at `/conta/2fa/`.
+- **Two panels:** the daily work happens at `/gestao/` (store look, strict CSP); the full Django admin at `ADMIN_URL` (django-unfold theme) is for everything else. The admin has a looser CSP (`SECURE_CSP_ADMIN`) because the theme needs it.
 
 ## Git
 
@@ -106,6 +108,7 @@ Python identifiers, models and URLs keep their Portuguese names (`Produto`, `Ped
 - [x] **Catalog (base):** product, variation, photo and stock models; admin; storefront and product page
 - [x] **Store frontend:** home, filtered listing, product, bag, step-by-step checkout, order tracking ([docs/frontend.md](docs/frontend.md))
 - [x] **Hosting:** AWS Lambda + CloudFront + S3 + Aurora DSQL, automatic deploys and daily backups ([docs/deploy.md](docs/deploy.md))
+- [x] **Management panel:** `/gestao/` for orders, pieces, stock, photos and reviews; admin with the django-unfold theme
 - [x] **Pix with no fees:** QR code straight to the store's account, manual approval in the admin, unpaid orders cancelled automatically
 - [ ] **Checkout:** Melhor Envio quotes, card on Asaas, webhooks, shipping labels, order emails, direct upload to S3
 - [ ] **After-sales:** customer service, exchanges and returns, reports

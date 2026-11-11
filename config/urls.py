@@ -3,13 +3,14 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-admin.site.site_header = "Arcana Crochet: painel"
+admin.site.site_header = "Arcana Crochet"
 admin.site.site_title = "Arcana Crochet"
-admin.site.index_title = "Administração da loja"
+admin.site.index_title = "Painel completo"
 
 urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
     path("conta/", include("allauth.urls")),
+    path("gestao/", include("apps.gestao.urls")),
     path("", include("apps.catalogo.urls")),
     path("", include("apps.pedidos.urls")),
     path("", include("apps.core.urls")),

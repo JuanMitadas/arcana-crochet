@@ -1,10 +1,11 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 
 from .models import Avaliacao
 
 
 @admin.register(Avaliacao)
-class AvaliacaoAdmin(admin.ModelAdmin):
+class AvaliacaoAdmin(ModelAdmin):
     list_display = ["produto", "nota", "titulo", "autor", "status", "criado_em"]
     list_filter = ["status", "nota"]
     search_fields = ["produto__nome", "titulo", "comentario", "autor__email"]
