@@ -63,6 +63,14 @@ jobs:
           python manage.py collectstatic --noinput -v 0
           python manage.py check --deploy --fail-level WARNING
 
+      - name: App loads with production dependencies only
+        # requirements/dev.txt pulls in extra packages; the Lambda image only has
+        # base.txt, so check that it is enough on its own.
+        run: |
+          python -m venv /tmp/base
+          /tmp/base/bin/pip install -q -r requirements/base.txt
+          DATABASE_URL=sqlite:////tmp/base.sqlite3 /tmp/base/bin/python manage.py check
+
       - name: Pending migrations
         run: python manage.py makemigrations --check --dry-run
 
