@@ -1,6 +1,6 @@
 Django==6.1.2
 django-environ==0.14.0
-django-allauth[mfa]==65.21.1
+django-allauth[mfa,socialaccount]==65.21.1
 django-unfold==0.110.1
 django-htmx==1.29.0
 django-storages[s3]==1.14.6
