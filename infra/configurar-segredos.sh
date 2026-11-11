@@ -46,6 +46,8 @@ existe ORIGEM_SEGREDO || gravar ORIGEM_SEGREDO "$(gerar)" String
 perguntar EMAIL_URL "SMTP for emails, e.g. smtp+tls://resend:<api-key>@smtp.resend.com:587" SecureString
 perguntar DEFAULT_FROM_EMAIL "Sender, e.g. Arcana Crochet <nao-responda@arcanacrochet.com.br>" String
 perguntar ADMIN_URL "Admin path, e.g. painel-x7k2/ (end it with /)" String
+perguntar GOOGLE_CLIENT_ID "Google sign-in: OAuth client ID (ends with .apps.googleusercontent.com)" String
+perguntar GOOGLE_CLIENT_SECRET "Google sign-in: OAuth client secret" SecureString
 perguntar LOJA_PIX_CHAVE "Pix key that receives the payments (CPF/CNPJ digits, email, +55 phone or random key)" SecureString
 perguntar LOJA_PIX_RECEBEDOR "Account holder's name, as the bank shows it (up to 25 characters)" String
 perguntar LOJA_PIX_CIDADE "Account holder's city, e.g. Cotia (up to 15 characters)" String

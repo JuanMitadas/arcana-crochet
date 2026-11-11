@@ -49,6 +49,8 @@ INSTALLED_APPS = [
     "allauth",
     "allauth.account",
     "allauth.mfa",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
     "django_htmx",
     # project
     "apps.core",
@@ -139,7 +141,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # names so dependencies still resolve. tests/test_dsql.py fails when an upgrade
 # adds a migration that is missing here.
 MIGRATION_MODULES = {
-    app: f"config.migracoes.{app}" for app in ("contenttypes", "auth", "account", "mfa")
+    app: f"config.migracoes.{app}"
+    for app in ("contenttypes", "auth", "account", "mfa", "socialaccount")
 }
 
 # --- Authentication ---------------------------------------------------------
@@ -182,6 +185,26 @@ ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE = False
 ACCOUNT_EMAIL_VERIFICATION_BY_CODE_ENABLED = True
 ACCOUNT_LOGIN_BY_CODE_ENABLED = True
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "[Arcana Crochet] "
+
+# "Continuar com o Google". The button only shows up once GOOGLE_CLIENT_ID and
+# GOOGLE_CLIENT_SECRET are set (SSM in production; see docs/external-accounts.md).
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", default="")
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APPS": [{"client_id": GOOGLE_CLIENT_ID, "secret": env("GOOGLE_CLIENT_SECRET", default="")}]
+        if GOOGLE_CLIENT_ID
+        else [],
+        "SCOPE": ["openid", "email", "profile"],
+        "AUTH_PARAMS": {"access_type": "online", "prompt": "select_account"},
+    }
+}
+SOCIALACCOUNT_ADAPTER = "apps.contas.adaptadores.AdaptadorSocial"
+# Google confirms the email, so an existing account with the same (verified) email
+# signs in with Google instead of creating a duplicate.
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+# Only what's needed to sign in: Google's access tokens are not kept (LGPD).
+SOCIALACCOUNT_STORE_TOKENS = False
 ACCOUNT_RATE_LIMITS = {
     # 10 failures per minute per IP and 5 every 15 minutes per account.
     "login_failed": "10/m/ip,5/900s/key",
@@ -296,7 +319,8 @@ SECURE_CSP = {
     "connect-src": [CSP.SELF, "https://viacep.com.br"],
     "media-src": [CSP.SELF, *env.list("CSP_IMG_SRC", default=[])],
     "frame-ancestors": [CSP.NONE],
-    "form-action": [CSP.SELF],
+    # Signing in with Google posts to the site, which redirects to Google.
+    "form-action": [CSP.SELF, "https://accounts.google.com"],
     "base-uri": [CSP.SELF],
     "object-src": [CSP.NONE],
 }

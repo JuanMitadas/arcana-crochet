@@ -57,6 +57,21 @@ Without email configured, nobody can sign up on the published store (sign-up req
 EMAIL_URL=smtp+tls://<user>:<password-or-api-key>@<smtp-server>:587
 ```
 
-## 6. Production accounts (close to launch)
+## 6. Sign in with Google
+
+The "Continuar com o Google" button appears on the login, sign-up and checkout pages once the Google credentials are set. It only asks Google for the name and email; the person's Google tokens are not stored.
+
+1. Open https://console.cloud.google.com with the store's Google account and create a project called `Arcana Crochet`.
+2. **APIs & Services → OAuth consent screen** (Google Auth Platform → Branding): app name *Arcana Crochet*, support email, the store logo and the site address. Audience: **External**. A privacy policy page is required before publishing (step 5); the store doesn't have one yet.
+3. **Clients → Create client** → *Web application*:
+   - **Authorized JavaScript origins:** `https://d2ab108d7u9pzi.cloudfront.net` (later also `https://arcanacrochet.com.br`).
+   - **Authorized redirect URIs:** `https://d2ab108d7u9pzi.cloudfront.net/conta/google/login/callback/` (later also `https://arcanacrochet.com.br/conta/google/login/callback/`).
+   - For local tests, add `http://localhost:8000` and `http://localhost:8000/conta/google/login/callback/`.
+4. Copy the **Client ID** and **Client secret** and store them with `bash infra/configurar-segredos.sh` (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`), then run the deploy again. For local tests, put them in `.env`.
+5. While the app is in **Testing**, only the Google accounts listed under *Audience → Test users* can sign in. Before launch, click **Publish app**: with only name and email (no sensitive scopes) Google doesn't require a review, but it does ask for the custom domain in *Authorized domains*, so do this once `arcanacrochet.com.br` is set up.
+
+Someone who already has an account with the same email signs in to that account with Google (Google confirms the email). New people get an account created with their Google name and email, already verified.
+
+## 7. Production accounts (close to launch)
 
 With the CNPJ in hand: a **business** account at Asaas (`https://api.asaas.com/v3`) and at Melhor Envio (`https://melhorenvio.com.br`), with balance for labels. Change the URLs and keys in the SSM parameters (`/arcana/prod/`). Never use a production key in your computer's `.env`.

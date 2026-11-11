@@ -1,0 +1,7 @@
+{# Replaces allauth's provider list on the login and sign-up pages. #}
+{% load socialaccount %}
+{% get_providers as provedores %}
+{% if provedores %}
+  <div class="my-6 flex items-center gap-3 text-sm text-ardosia" role="separator"><span class="h-px flex-1 bg-creme-3"></span>ou<span class="h-px flex-1 bg-creme-3"></span></div>
+  {% include "componentes/entrar_google.html" with proximo=request.GET.next %}
+{% endif %}
