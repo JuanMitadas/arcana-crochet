@@ -385,6 +385,8 @@ LOJA = {
     "WHATSAPP": env("LOJA_WHATSAPP", default=""),
     "EMAIL_ATENDIMENTO": env("LOJA_EMAIL_ATENDIMENTO", default="contato@arcanacrochet.com.br"),
     "INSTAGRAM": env("LOJA_INSTAGRAM", default="arcanacrochet"),
+    # Perks bar above the header (Pix discount, installments, free shipping). Off for now.
+    "FAIXA_VANTAGENS": env.bool("LOJA_FAIXA_VANTAGENS", default=False),
     # Pix straight to the store's account (apps/pedidos/pix.py). The key, name and city
     # show up in the customer's bank app; on AWS they live in SSM, not in the repo.
     "PIX_CHAVE": env("LOJA_PIX_CHAVE", default=""),

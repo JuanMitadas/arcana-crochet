@@ -369,6 +369,48 @@
     );
   }
 
+  /* --- Header: compact after scrolling down ---------------------------- */
+  function iniciarTopoCompacto() {
+    const topo = document.querySelector("[data-encolhe]");
+    if (!topo) return;
+    // Phone search button: only shown while compact (the search row is hidden then).
+    const abrir = topo.querySelector("[data-abrir-busca]");
+    const campo = topo.querySelector(".busca input");
+    let compacto = false;
+    let agendado = false;
+    const aplicar = (valor) => {
+      compacto = valor;
+      topo.classList.toggle("topo--compacto", valor);
+      if (abrir) abrir.hidden = !valor;
+    };
+    // Two thresholds so the header doesn't flicker while its own height changes.
+    const atualizar = () => {
+      agendado = false;
+      const y = window.scrollY;
+      const deve = y > 120 ? true : y < 40 ? false : compacto;
+      if (deve !== compacto) aplicar(deve);
+    };
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!agendado) {
+          agendado = true;
+          requestAnimationFrame(atualizar);
+        }
+      },
+      { passive: true },
+    );
+    atualizar();
+
+    if (abrir && campo) {
+      abrir.addEventListener("click", () => {
+        window.scrollTo({ top: 0 });
+        aplicar(false);
+        campo.focus();
+      });
+    }
+  }
+
   function iniciar(raiz = document) {
     iniciarCarrosseis(raiz);
     iniciarCep(raiz);
@@ -382,6 +424,7 @@
     iniciarCopiar();
     iniciarMenus();
     iniciarEntrega();
+    iniciarTopoCompacto();
   });
 
   // Content swapped in by HTMX (filters, bag) gets the behaviors too
